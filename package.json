@@ -60,6 +60,10 @@
       {
         "name": "journal_palette",
         "description": "Journal figure hex palettes (100 curated publication palettes for Python)"
+      },
+      {
+        "name": "research_compute",
+        "description": "Scientific calculation gateway: dimensional analysis, numerical spot-checks, and optional SymPy symbolic calculus."
       }
     ],
     "skills": [

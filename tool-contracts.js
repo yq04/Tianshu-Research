@@ -225,8 +225,65 @@ export const RESEARCH_EVIDENCE_SCHEMA = {
     relation: { type: 'string' },
     excerpt: { type: 'string' },
     statement: { type: 'string' },
-    evidenceIds: { type: 'array', items: { type: 'string' } },
-    status: { type: 'string' },
+      evidenceIds: { type: 'array', items: { type: 'string' } },
+      status: { type: 'string' },
+    },
+    required: ['action'],
+    additionalProperties: false,
+  }
+
+export const RESEARCH_COMPUTE_ACTIONS = [
+  'probe_environment',
+  'dimension_check',
+  'numeric_eval',
+  'symbolic_eval',
+]
+
+export const RESEARCH_COMPUTE_SCHEMA = {
+  type: 'object',
+  properties: {
+    action: {
+      type: 'string',
+      enum: RESEARCH_COMPUTE_ACTIONS,
+      description: 'Compute action: probe_environment, dimension_check, numeric_eval, or symbolic_eval',
+    },
+    lhs: {
+      type: 'string',
+      description: 'Left-hand side expression for dimensional analysis (e.g. "K_I" or "force / area")',
+    },
+    rhs: {
+      type: 'string',
+      description: 'Right-hand side expression for dimensional analysis (e.g. "sigma * sqrt(a)" or "pressure")',
+    },
+    analytic: {
+      type: ['number', 'string'],
+      description: 'Analytic/reference value for numerical evaluation',
+    },
+    numerical: {
+      type: ['number', 'string'],
+      description: 'Numerical/simulated value for numerical evaluation',
+    },
+    tolerance: {
+      type: 'number',
+      description: 'Relative/absolute tolerance threshold (default: 1e-4)',
+    },
+    expr: {
+      type: 'string',
+      description: 'Mathematical expression for symbolic evaluation',
+    },
+    symbolicAction: {
+      type: 'string',
+      enum: ['simplify', 'limit', 'diff'],
+      description: 'Symbolic operation (default: simplify)',
+    },
+    var: {
+      type: 'string',
+      description: 'Variable name for limit or differentiation (default: "x")',
+    },
+    to: {
+      type: ['string', 'number'],
+      description: 'Target value for limit (default: "oo")',
+    },
   },
   required: ['action'],
   additionalProperties: false,
@@ -245,6 +302,8 @@ export const TOOL_DESCRIPTIONS = {
     'Unified scholarly query gateway for paper search and metadata resolution across arXiv and OpenAlex. Action: search_papers or resolve_paper.',
   research_evidence:
     'Structured scientific evidence ledger gateway. Manage sources, exact-locator evidence, and claims in the research workspace.',
+  research_compute:
+    'Scientific calculation gateway. Perform dimensional consistency checks (SI/mechanics), numerical tolerance spot-checks, and optional SymPy symbolic calculus with graceful degradation.',
 }
 
 function checkUnknownProperties(raw, allowedKeys) {
@@ -553,6 +612,90 @@ export function validateResearchEvidenceParams(raw) {
 
   if (trimmedAction === 'get_summary' || trimmedAction === 'verify_ledger') {
     return { ok: true, value: { action: trimmedAction, workspace } }
+  }
+
+  return { ok: false, error: 'Unsupported action: ' + trimmedAction }
+}
+
+const COMPUTE_ALLOWED_KEYS = [
+  'action',
+  'lhs',
+  'rhs',
+  'analytic',
+  'numerical',
+  'a',
+  'n',
+  'tolerance',
+  'expr',
+  'symbolicAction',
+  'var',
+  'to',
+  'customUnits',
+]
+
+export function validateResearchComputeParams(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, error: 'arguments must be an object' }
+  }
+  const unk = checkUnknownProperties(raw, COMPUTE_ALLOWED_KEYS)
+  if (unk) return { ok: false, error: unk }
+  const action = raw.action
+  if (typeof action !== 'string' || !RESEARCH_COMPUTE_ACTIONS.includes(action.trim())) {
+    return { ok: false, error: 'action must be one of: ' + RESEARCH_COMPUTE_ACTIONS.join(', ') }
+  }
+  const trimmedAction = action.trim()
+
+  if (trimmedAction === 'probe_environment') {
+    return { ok: true, value: { action: trimmedAction } }
+  }
+
+  if (trimmedAction === 'dimension_check') {
+    const lhs = raw.lhs
+    const rhs = raw.rhs
+    if (typeof lhs !== 'string' || !lhs.trim()) {
+      return { ok: false, error: 'lhs is required and must be a non-empty string for dimension_check' }
+    }
+    if (typeof rhs !== 'string' || !rhs.trim()) {
+      return { ok: false, error: 'rhs is required and must be a non-empty string for dimension_check' }
+    }
+    return { ok: true, value: { action: trimmedAction, lhs: lhs.trim(), rhs: rhs.trim(), customUnits: raw.customUnits } }
+  }
+
+  if (trimmedAction === 'numeric_eval') {
+    const analytic = raw.analytic !== undefined ? raw.analytic : raw.a
+    const numerical = raw.numerical !== undefined ? raw.numerical : raw.n
+    if (analytic === undefined || isNaN(Number(analytic))) {
+      return { ok: false, error: 'analytic must be a valid number or numeric string for numeric_eval' }
+    }
+    if (numerical === undefined || isNaN(Number(numerical))) {
+      return { ok: false, error: 'numerical must be a valid number or numeric string for numeric_eval' }
+    }
+    let tolerance = 1e-4
+    if (raw.tolerance !== undefined) {
+      const t = Number(raw.tolerance)
+      if (isNaN(t) || t < 0) {
+        return { ok: false, error: 'tolerance must be a non-negative number' }
+      }
+      tolerance = t
+    }
+    return { ok: true, value: { action: trimmedAction, analytic: Number(analytic), numerical: Number(numerical), tolerance } }
+  }
+
+  if (trimmedAction === 'symbolic_eval') {
+    const expr = raw.expr
+    if (typeof expr !== 'string' || !expr.trim()) {
+      return { ok: false, error: 'expr is required and must be a non-empty string for symbolic_eval' }
+    }
+    return {
+      ok: true,
+      value: {
+        action: trimmedAction,
+        expr: expr.trim(),
+        symbolicAction: raw.symbolicAction || 'simplify',
+        var: raw.var || 'x',
+        to: raw.to !== undefined ? raw.to : 'oo',
+      },
+    }
   }
 
   return { ok: false, error: 'Unsupported action: ' + trimmedAction }

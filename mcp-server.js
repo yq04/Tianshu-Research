@@ -12,6 +12,7 @@ import { runPaperLookup, runPaperSearch } from './search.js'
 import { runResearchStatus } from './tools/research-status.js'
 import { runResearchQuery } from './gateway-query.js'
 import { runResearchEvidence } from './gateway-evidence.js'
+import { runResearchCompute } from './compute/compute-gateway.js'
 import {
   JOURNAL_PALETTE_SCHEMA,
   PAPER_LOOKUP_SCHEMA,
@@ -19,6 +20,7 @@ import {
   RESEARCH_STATUS_SCHEMA,
   RESEARCH_QUERY_SCHEMA,
   RESEARCH_EVIDENCE_SCHEMA,
+  RESEARCH_COMPUTE_SCHEMA,
   TOOL_DESCRIPTIONS,
   validateJournalPaletteParams,
   validatePaperLookupParams,
@@ -26,6 +28,7 @@ import {
   validateResearchStatusParams,
   validateResearchQueryParams,
   validateResearchEvidenceParams,
+  validateResearchComputeParams,
 } from './tool-contracts.js'
 
 const PROTOCOL = '2024-11-05'
@@ -60,6 +63,11 @@ export const MCP_TOOLS = [
     name: 'journal_palette',
     description: TOOL_DESCRIPTIONS.journal_palette,
     inputSchema: JOURNAL_PALETTE_SCHEMA,
+  },
+  {
+    name: 'research_compute',
+    description: TOOL_DESCRIPTIONS.research_compute,
+    inputSchema: RESEARCH_COMPUTE_SCHEMA,
   },
 ]
 
@@ -169,6 +177,13 @@ export async function handleMcpMessage(msg) {
           return fail(effectiveId, -32602, validated.error)
         }
         return ok(effectiveId, asText(runJournalPalette(validated.value)))
+      }
+      if (name === 'research_compute') {
+        const validated = validateResearchComputeParams(rawArgs)
+        if (!validated.ok) {
+          return fail(effectiveId, -32602, validated.error)
+        }
+        return ok(effectiveId, asText(await runResearchCompute(validated.value)))
       }
       return fail(effectiveId, -32601, 'Unknown tool: ' + String(name))
     }

@@ -5,6 +5,7 @@ import { runPaperLookup, runPaperSearch } from './search.js'
 import { runResearchStatus } from './tools/research-status.js'
 import { runResearchQuery } from './gateway-query.js'
 import { runResearchEvidence } from './gateway-evidence.js'
+import { runResearchCompute } from './compute/compute-gateway.js'
 import {
   JOURNAL_PALETTE_SCHEMA,
   PAPER_LOOKUP_SCHEMA,
@@ -12,6 +13,7 @@ import {
   RESEARCH_STATUS_SCHEMA,
   RESEARCH_QUERY_SCHEMA,
   RESEARCH_EVIDENCE_SCHEMA,
+  RESEARCH_COMPUTE_SCHEMA,
   TOOL_DESCRIPTIONS,
 } from './tool-contracts.js'
 
@@ -78,6 +80,17 @@ export const tools = [
       input_schema: JOURNAL_PALETTE_SCHEMA,
     },
     execute: (params) => runJournalPalette(params),
+    requiresApproval: () => false,
+    isConcurrencySafe: () => true,
+    isEnabled: () => true,
+  },
+  {
+    definition: {
+      name: 'research_compute',
+      description: TOOL_DESCRIPTIONS.research_compute,
+      input_schema: RESEARCH_COMPUTE_SCHEMA,
+    },
+    execute: (params) => runResearchCompute(params),
     requiresApproval: () => false,
     isConcurrencySafe: () => true,
     isEnabled: () => true,
