@@ -68,11 +68,11 @@ describe('tianshu-research MCP stdio protocol', () => {
     assert.equal(res.result.isError, false)
     assert.match(res.result.content[0].text, /#7FC97F/)
     assert.match(res.result.content[0].text, /#F0027F/)
-    assert.match(res.result.content[0].text, /TheBestColor\('akun', 1\)/)
+    assert.match(res.result.content[0].text, /journal_palette\(1\)/)
   })
 })
 
-describe('thebestcolor palettes', () => {
+describe('journal_palette palettes', () => {
   it('id 1 matches ColorBrewer Accent exactly', () => {
     const p = resolvePalette({ id: 1 })
     assert.deepEqual(p.hex, [

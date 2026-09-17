@@ -59,7 +59,7 @@ export const JOURNAL_PALETTE_SCHEMA = {
       type: 'integer',
       minimum: 1,
       maximum: 100,
-      description: 'Palette id 1–100 (MATLAB TheBestColor second argument)',
+      description: 'Palette id 1–100 (palette id 1–100)',
     },
     role: {
       type: 'string',
@@ -91,7 +91,7 @@ export const TOOL_DESCRIPTIONS = {
   paper_lookup:
     'Look up one paper by arXiv id, arXiv abs/pdf URL, or DOI. Returns metadata and OA PDF URL when available. Does not fetch paywalled full text.',
   journal_palette:
-    'Return hex colors for journal figures (TheBestColor MATLAB pack rewritten for Python). id 1–100, role, or ColorBrewer name. mode=discrete or map. Not a plotting pipeline; not TUI themes. Omit args to list recommended roles only.',
+    'Return hex colors for journal figures (100 curated publication palettes for Python). id 1–100, role, or ColorBrewer name. mode=discrete or map. Not a plotting pipeline; not TUI themes. Omit args to list recommended roles only.',
 }
 
 export function validatePaperSearchParams(raw) {

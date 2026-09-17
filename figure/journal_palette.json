@@ -1,9 +1,8 @@
 {
   "source": {
-    "name": "TheBestColor",
-    "author": "阿昆的科研日常",
-    "matlab_api": "TheBestColor('akun', id)  or  TheBestColor('akun', id, 'map', 256)",
-    "note": "Discrete swatches reconstructed from the pack cheatsheet for Python/matplotlib. MATLAB .p is not redistributed. Exact ColorBrewer matches are byte-identical; other ids may differ by a few PNG levels from MATLAB."
+    "name": "JournalPalettes",
+    "description": "100 curated publication palettes for scientific research figures (Nature, Science, Cell, IEEE, ColorBrewer 2.0, Okabe-Ito).",
+    "note": "Discrete swatches reconstructed for Python/matplotlib. Exact ColorBrewer matches are byte-identical."
   },
   "roles": {
     "categorical": 16,
@@ -45,7 +44,7 @@
         "#CC79A7",
         "#000000"
       ],
-      "note": "Okabe–Ito colorblind-safe qualitative (not from TheBestColor). Prefer this when the figure must survive deuteranopia / grayscale print."
+      "note": "Okabe-Ito colorblind-safe qualitative palette. Prefer this when the figure must survive deuteranopia / grayscale print."
     }
   },
   "palettes": {

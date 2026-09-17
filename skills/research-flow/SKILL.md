@@ -1,6 +1,6 @@
 ---
 name: research-flow
-description: 查 OA 文献（arXiv / OpenAlex）。粘贴 abs/DOI 即查一篇；短用出候选表等人选。用户要科研图配色时用 journal_palette / TheBestColor Python 色板。不要用 web_search 当学术库。用户没说入库就不要写 Zotero。
+description: 查 OA 文献（arXiv / OpenAlex）。粘贴 abs/DOI 即查一篇；短用出候选表等人选。用户要科研图配色时用 journal_palette / journal_palette Python 色板。不要用 web_search 当学术库。用户没说入库就不要写 Zotero。
 triggers: [论文, 文献, arxiv, OpenAlex, 检索文献, 查论文, DOI, paper search, literature, 润色论文, 读论文, 配色, 科研图, colormap, matplotlib]
 ---
 
@@ -17,7 +17,7 @@ triggers: [论文, 文献, arxiv, OpenAlex, 检索文献, 查论文, DOI, paper 
 
 交互习惯参考 [gpt_academic](https://github.com/binary-husky/gpt_academic)（GPL-3.0，只借鉴用法，不拷代码）：粘贴 arXiv 链接就查这一篇；先摘要后全文；润色只改用户给出的段落。
 
-读卡/证据边界参考 [nature-skills](https://github.com/Yuan1z0825/nature-skills)（Apache-2.0；不是 Nature 期刊官方）：材料不够就标「现有材料无法判断」，不要编页码、图号或未读过的实验。不要默认输出 16 节精读卡、组会 PPT、审稿模拟。需要那套完整读卡/多面板投稿图流程时让用户自己 `npx skills add Yuan1z0825/nature-skills`，不要把整包拷进本会话。本插件只吸收纪律 + 提供 TheBestColor 的 Python 色板。
+读卡/证据边界参考 [nature-skills](https://github.com/Yuan1z0825/nature-skills)（Apache-2.0；不是 Nature 期刊官方）：材料不够就标「现有材料无法判断」，不要编页码、图号或未读过的实验。不要默认输出 16 节精读卡、组会 PPT、审稿模拟。需要那套完整读卡/多面板投稿图流程时让用户自己 `npx skills add Yuan1z0825/nature-skills`，不要把整包拷进本会话。本插件只吸收纪律 + 提供 journal_palette Python 色板。
 
 ## 默认：短用
 
@@ -35,11 +35,11 @@ triggers: [论文, 文献, arxiv, OpenAlex, 检索文献, 查论文, DOI, paper 
 
 ## 科研图配色（用户要出图时）
 
-MATLAB 顶刊包 TheBestColor（阿昆的科研日常）已改写成 Python，**不要**调用 MATLAB `.p`，也**不要**把这些颜色写进天枢 TUI 主题。
+100 套顶刊色板已改写为 journal_palette Python 模块，**不要**调用 MATLAB `.p`，也**不要**把这些颜色写进天枢 TUI 主题。
 
 1. 先问图类型：分类曲线 / 热图 / 发散 / 必须色盲安全。没说清就用 `journal_palette` 不带参数，只看推荐 role。
 2. 取色：`mcp__tianshu-research__journal_palette`（`role=categorical|heatmap|diverging|colorblind` 或 MATLAB 的 id 1–100）。色盲/灰度印刷用 `role=colorblind`（Okabe–Ito，不是该 MATLAB 包里的彩虹）。
-3. 画图脚本：把 `plugins/tianshu-research/figure/thebestcolor.py` 和 `thebestcolor.json` 一同拷到用户脚本旁。`thebestcolor(16)` 对应 MATLAB `TheBestColor('akun',16)`；热图 `thebestcolor(45, map_n=256)` 或 `66`（viridis）。`apply_journal_style()` 只设 Arial + `svg.fonttype='none'`，与 nature-figure 的强制字体规则对齐。
+3. 画图脚本：把 `plugins/tianshu-research/figure/thebestcolor.py` 和 `thebestcolor.json` 一同拷到用户脚本旁。`journal_palette(16)` 对应 MATLAB `TheBestColor('akun',16)`；热图 `journal_palette(45, map_n=256)` 或 `66`（viridis）。`apply_journal_style()` 只设 Arial + `svg.fonttype='none'`，与 nature-figure 的强制字体规则对齐。
 4. 不要编造数据或统计星号。完整多面板/投稿尺寸/source data 走 nature-figure，不是本工具。
 
 ## 润色（用户贴了段落时）

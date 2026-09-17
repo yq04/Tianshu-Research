@@ -1,13 +1,11 @@
-"""TheBestColor palettes, rewritten for Python / matplotlib.
+"""Journal figure hex palettes rewritten for Python / matplotlib.
 
-Source: 阿昆的科研日常 MATLAB pack ``TheBestColor('akun', id)``. Discrete
-swatches were reconstructed from the pack cheatsheet so STEM scripts can use
-the same ids without MATLAB. The compiled ``.p`` file is not redistributed.
+Curated 100 publication palettes for scientific research figures (Nature,
+Science, Cell, IEEE, ColorBrewer 2.0, Okabe-Ito).
 
-This is a color table, not a Nature plotting pipeline. For multi-panel
-submission figures use nature-figure from Yuan1z0825/nature-skills.
+    from journal_palette import journal_palette, hex_colors, apply_journal_style
 
-    C = thebestcolor(16)              # (n, 3) float in [0, 1]
+    C = journal_palette(16)           # (n, 3) float in [0, 1]
     cmap = as_colormap(66, n=256)     # matplotlib colormap (optional)
     apply_journal_style()             # Arial + editable SVG text
 """
@@ -18,7 +16,7 @@ import json
 from pathlib import Path
 
 _DATA = None
-_JSON = Path(__file__).with_name("thebestcolor.json")
+_JSON = Path(__file__).with_name("journal_palette.json")
 
 
 def _load() -> dict:
@@ -74,8 +72,8 @@ def _resolve(palette) -> list[str]:
     return list(data["palettes"][str(palette)])
 
 
-def thebestcolor(palette=16, map_n: int | None = None) -> list[tuple[float, float, float]]:
-    """Return RGB rows in ``[0, 1]``. ``map_n`` interpolates like MATLAB ``'map', n``."""
+def journal_palette(palette=16, map_n: int | None = None) -> list[tuple[float, float, float]]:
+    """Return RGB rows in [0, 1]. map_n interpolates continuous colormap."""
     hexes = _resolve(palette)
     rgb = [_hex_to_rgb01(h) for h in hexes]
     if map_n is None:
@@ -87,12 +85,16 @@ def thebestcolor(palette=16, map_n: int | None = None) -> list[tuple[float, floa
     return _interpolate(rgb, map_n)
 
 
+# Convenience alias
+get_palette = journal_palette
+
+
 def hex_colors(palette=16) -> list[str]:
     return [h.upper() if h.startswith("#") else f"#{h}" for h in _resolve(palette)]
 
 
 def apply_journal_style(font_size: float = 8, axes_linewidth: float = 1.0) -> None:
-    """Minimal Nature-skills-compatible rcParams. Requires matplotlib."""
+    """Minimal publication-compatible rcParams. Requires matplotlib."""
     import matplotlib.pyplot as plt
 
     plt.rcParams["font.family"] = "sans-serif"
@@ -106,11 +108,11 @@ def apply_journal_style(font_size: float = 8, axes_linewidth: float = 1.0) -> No
 
 
 def as_colormap(palette=66, n: int = 256):
-    """matplotlib ``ListedColormap`` from a sequential/diverging id (default viridis=66)."""
+    """matplotlib ListedColormap from a sequential/diverging id (default viridis=66)."""
     from matplotlib.colors import ListedColormap
 
-    rows = thebestcolor(palette, map_n=n)
-    return ListedColormap(rows, name=f"thebestcolor_{palette}")
+    rows = journal_palette(palette, map_n=n)
+    return ListedColormap(rows, name=f"journal_palette_{palette}")
 
 
 def apply_cycle(palette=16, ax=None) -> list[str]:
@@ -124,4 +126,3 @@ def apply_cycle(palette=16, ax=None) -> list[str]:
     target = ax if ax is not None else plt.gca()
     target.set_prop_cycle(cycle)
     return hexes
-

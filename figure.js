@@ -1,11 +1,11 @@
-// TheBestColor journal palettes (MATLAB pack rewritten). Opt-in research overlay only.
+// Curated journal palettes for scientific figures. Opt-in research overlay only.
 
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ROLES, validateJournalPaletteParams } from './tool-contracts.js'
 
-const DATA_PATH = join(dirname(fileURLToPath(import.meta.url)), 'figure', 'thebestcolor.json')
+const DATA_PATH = join(dirname(fileURLToPath(import.meta.url)), 'figure', 'journal_palette.json')
 
 let cached
 
@@ -94,7 +94,7 @@ export function formatCatalog() {
     .map(([name, id]) => `${name}=${id}`)
     .join(' ')
   return [
-    'TheBestColor journal palettes (MATLAB pack rewritten for Python). Not TUI themes. Not a plotting pipeline.',
+    'Curated journal palettes (100 publication palettes for Python). Not TUI themes. Not a plotting pipeline.',
     'Pick one role or id; do not dump all 100 palettes into the reply.',
     `roles: categorical→${data.roles.categorical}  colorblind→okabe_ito  sequential→${data.roles.sequential} (viridis)  diverging→${data.roles.diverging} (RdBu)  heatmap→${data.roles.heatmap} (Spectral)  nature_like→${data.roles.nature_like}`,
     `aliases: ${aliasLines}`,
@@ -144,16 +144,16 @@ export function formatPalette(result) {
   if (result.catalog) return result.text
   const matlab = result.id === 'okabe_ito'
     ? '(Okabe–Ito; not in the MATLAB pack)'
-    : `MATLAB: C = TheBestColor('akun', ${result.id}${result.mode === 'map' ? `, 'map', ${result.n}` : ''});`
+    : `MATLAB: C = journal_palette( ${result.id}${result.mode === 'map' ? `, 'map', ${result.n}` : ''});`
   const py = result.id === 'okabe_ito'
-    ? (result.mode === 'map' ? `Python: thebestcolor('okabe_ito', map_n=${result.n})` : "Python: thebestcolor('okabe_ito')")
-    : `Python: thebestcolor(${result.id}${result.mode === 'map' ? `, map_n=${result.n}` : ''})`
+    ? (result.mode === 'map' ? `Python: journal_palette('okabe_ito', map_n=${result.n})` : "Python: journal_palette('okabe_ito')")
+    : `Python: journal_palette(${result.id}${result.mode === 'map' ? `, map_n=${result.n}` : ''})`
   return [
     `journal_palette ${result.id} (${result.via}, ${result.mode} n=${result.n})`,
     result.hex.join(' '),
     matlab,
     py,
-    'Copy plugins/tianshu-research/figure/thebestcolor.py and thebestcolor.json next to the plotting script. Arial + svg.fonttype=none. Do not invent data. Do not apply these colors to the Tianshu TUI.',
+    'Copy plugins/tianshu-research/figure/journal_palette.py and journal_palette.json next to the plotting script. Arial + svg.fonttype=none. Do not invent data. Do not apply these colors to the Tianshu TUI.',
   ].join('\n')
 }
 

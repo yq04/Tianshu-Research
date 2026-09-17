@@ -20,7 +20,7 @@
 - 许可协议：CC0 1.0 Universal (CC0 1.0) Public Domain Dedication
 - 说明：用于学术文献元数据检索与开放获取状态初筛。
 
-## 5. TheBestColor 顶刊配色采样
+## 5. 顶刊配色采样与归属声明
 - 来源：阿昆的科研日常 MATLAB 配色包（离散采样对照）
 - 说明：未包含原 MATLAB 编译二进制（.p）及大图文件；仅包含纯 Python 与 JSON 重建后的离散与插值算法。
 

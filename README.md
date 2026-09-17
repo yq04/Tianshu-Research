@@ -34,8 +34,8 @@
 - 支持按角色查询（`heatmap`、`scatter`、`category`、`colorblind`）。
 - 支持离散取色与连续渐变（线性 RGB 插值）。
 
-### 4. 绘图伴生模块 (`thebestcolor.py`)
-- 纯 Python 独立模块，提供与 MATLAB TheBestColor 兼容的绘图 API。
+### 4. 绘图伴生模块 (`journal_palette.py`)
+- 纯 Python 独立模块，提供与 MATLAB JournalPalettes 兼容的绘图 API。
 - 内置 `apply_journal_style()` 一键设置期刊规范样式（Arial 字体、隐藏冗余脊线、矢量化渲染）。
 
 ---
@@ -77,18 +77,18 @@
 
 ### 方式三：Python 绘图脚本直接调用
 
-将 `figure/thebestcolor.py` 与 `figure/thebestcolor.json` 复制到绘图项目目录下：
+将 `figure/journal_palette.py` 与 `figure/journal_palette.json` 复制到绘图项目目录下：
 
 ```python
 import matplotlib.pyplot as plt
 import numpy as np
-from thebestcolor import thebestcolor, apply_journal_style
+from journal_palette import journal_palette, apply_journal_style
 
 # 应用顶刊排版规范
 apply_journal_style()
 
 # 获取色盲安全色板
-colors = thebestcolor('colorblind')
+colors = journal_palette('colorblind')
 
 fig, ax = plt.subplots(figsize=(6, 4))
 x = np.linspace(0, 10, 100)
@@ -121,8 +121,8 @@ npm run test:python
 ```text
 Tianshu-Research/
 ├── figure/
-│   ├── thebestcolor.json     # 100 套顶刊色板原始数据
-│   └── thebestcolor.py       # Python 绘图伴生库
+│   ├── journal_palette.json     # 100 套顶刊色板原始数据
+│   └── journal_palette.py       # Python 绘图伴生库
 ├── skills/
 │   └── research-flow/
 │       └── SKILL.md          # 智能体文献检索与初筛工作流
@@ -130,7 +130,7 @@ Tianshu-Research/
 │   ├── arxiv-sample.xml      # 测试用的 Atom 离线样卷
 │   ├── mcp-server.test.js    # MCP JSON-RPC 2.0 协议测试
 │   ├── search.test.js        # arXiv / OpenAlex 解析器单测
-│   └── test_thebestcolor.py  # Python 色板断言
+│   └── test_journal_palette.py  # Python 色板断言
 ├── figure.js                 # Node 端色板插值与角色查询
 ├── index.js                  # Tianshu 插件系统入口
 ├── mcp-server.js             # 标准 stdio MCP 服务实现
