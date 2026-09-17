@@ -18,7 +18,7 @@
 
 ---
 
-## 提供工具与网关体系 (6 大工具)
+## 提供工具与网关体系 (7 大工具)
 
 ### 一、收敛网关与状态工具 (Gateway & Status)
 
@@ -37,11 +37,17 @@
    - `action: "get_summary"`：统计当前工作区账本整体规模。
    - `action: "verify_ledger"`：触发科学门禁审查，检查引用悬空、定位覆盖率与占位符。
 
+4. **`research_compute` (科学计算与量纲检验网关)**
+   - `action: "probe_environment"`：探测系统 Python、NumPy、SciPy、SymPy 就绪度与算力状态。
+   - `action: "dimension_check"`：物理与工程量纲一致性自动化核验（纯 Node 零依赖秒级执行，支持力学、流体、断裂准则）。
+   - `action: "numeric_eval"`：解析值与数值仿真解容差检验（相对误差与绝对误差）。
+   - `action: "symbolic_eval"`：符号代数简化、极限推导与求导（支持 SymPy 后端，未安装时优雅降级）。
+
 ### 二、经典原子工具 (完全向后兼容)
 
-4. **`paper_search`**：按关键词或 URL 检索 arXiv / OpenAlex 开放获取论文。
-5. **`paper_lookup`**：按 arXiv ID 或 DOI 查询单篇文献详情。
-6. **`journal_palette`**：查询 100 套顶刊出版规范配色（Nature, Science, IEEE, ColorBrewer, Okabe-Ito 色盲友好色板）。
+5. **`paper_search`**：按关键词或 URL 检索 arXiv / OpenAlex 开放获取论文。
+6. **`paper_lookup`**：按 arXiv ID 或 DOI 查询单篇文献详情。
+7. **`journal_palette`**：查询 100 套顶刊出版规范配色（Nature, Science, IEEE, ColorBrewer, Okabe-Ito 色盲友好色板）。
 
 ---
 
