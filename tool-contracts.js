@@ -289,6 +289,118 @@ export const RESEARCH_COMPUTE_SCHEMA = {
   additionalProperties: false,
 }
 
+export const RESEARCH_DOCUMENT_ACTIONS = ['inspect', 'read_section', 'locate_text', 'ingest']
+
+export const RESEARCH_DOCUMENT_SCHEMA = {
+  type: 'object',
+  properties: {
+    action: {
+      type: 'string',
+      enum: RESEARCH_DOCUMENT_ACTIONS,
+      description: 'Document action: inspect, read_section, locate_text, or ingest',
+    },
+    documentPath: {
+      type: 'string',
+      description: 'Local file path to document (text or markdown)',
+    },
+    docId: {
+      type: 'string',
+      description: 'Ingested document ID',
+    },
+    text: {
+      type: 'string',
+      description: 'Direct document text content',
+    },
+    section: {
+      type: ['string', 'number'],
+      description: 'Section index (number) or section heading keyword (string) for read_section',
+    },
+    query: {
+      type: 'string',
+      description: 'Search keyword or sentence for locate_text',
+    },
+    contextChars: {
+      type: 'integer',
+      description: 'Surrounding context character count for locate_text (default: 100)',
+    },
+    workspace: {
+      type: 'string',
+      description: 'Optional workspace path (defaults to current working directory)',
+    },
+    id: { type: 'string', description: 'Document ID (for ingest)' },
+    title: { type: 'string', description: 'Document title' },
+    sourcePath: { type: 'string', description: 'Source file path for ingest' },
+    authors: { type: 'array', items: { type: 'string' }, description: 'Authors list' },
+    doi: { type: 'string', description: 'Document DOI' },
+    arxivId: { type: 'string', description: 'Document arXiv ID' },
+  },
+  required: ['action'],
+  additionalProperties: false,
+}
+
+export const RESEARCH_JOB_ACTIONS = ['start', 'query', 'update', 'cancel', 'list', 'report']
+
+export const RESEARCH_JOB_SCHEMA = {
+  type: 'object',
+  properties: {
+    action: {
+      type: 'string',
+      enum: RESEARCH_JOB_ACTIONS,
+      description: 'Job action: start, query, update, cancel, list, or report',
+    },
+    jobId: {
+      type: 'string',
+      description: 'Unique job identifier',
+    },
+    id: {
+      type: 'string',
+      description: 'Alias for jobId',
+    },
+    type: {
+      type: 'string',
+      description: 'Job task type (e.g. batch_search, screening, evidence_audit)',
+    },
+    title: {
+      type: 'string',
+      description: 'Job title / human readable description',
+    },
+    status: {
+      type: 'string',
+      description: 'Job status (for update/filter: queued, running, completed, failed, cancelled)',
+    },
+    progress: {
+      type: 'number',
+      description: 'Job progress percentage (0-100)',
+    },
+    message: {
+      type: 'string',
+      description: 'Progress update or event log message',
+    },
+    event: {
+      type: 'string',
+      description: 'Event name for event stream append',
+    },
+    reason: {
+      type: 'string',
+      description: 'Reason for cancellation',
+    },
+    payload: {
+      type: 'object',
+      description: 'Initial parameters / task payload for start',
+    },
+    result: {
+      type: 'object',
+      description: 'Final result artifact for completed job',
+    },
+    workspace: {
+      type: 'string',
+      description: 'Optional workspace path (defaults to current working directory)',
+    },
+  },
+  required: ['action'],
+  additionalProperties: false,
+}
+
 export const TOOL_DESCRIPTIONS = {
   paper_search:
     'Search open-access papers on arXiv and/or OpenAlex. If query is an arXiv URL/id or DOI, looks up that one paper instead. Not a systematic review; paywalled venues and Google Scholar are not covered. After results, wait for the user to pick a paper.',
@@ -304,6 +416,10 @@ export const TOOL_DESCRIPTIONS = {
     'Structured scientific evidence ledger gateway. Manage sources, exact-locator evidence, and claims in the research workspace.',
   research_compute:
     'Scientific calculation gateway. Perform dimensional consistency checks (SI/mechanics), numerical tolerance spot-checks, and optional SymPy symbolic calculus with graceful degradation.',
+  research_document:
+    'Scientific document inspection and section reading gateway. Inspect document structure, read specific sections, extract exact locators for claims, and ingest papers into the workspace.',
+  research_job:
+    'Asynchronous research task engine gateway. Start, query, update, cancel, and report long-running multi-paper research workflows and state machines.',
 }
 
 function checkUnknownProperties(raw, allowedKeys) {
@@ -699,4 +815,104 @@ export function validateResearchComputeParams(raw) {
   }
 
   return { ok: false, error: 'Unsupported action: ' + trimmedAction }
+}
+
+const DOCUMENT_ALLOWED_KEYS = [
+  'action',
+  'documentPath',
+  'docId',
+  'id',
+  'text',
+  'section',
+  'query',
+  'contextChars',
+  'workspace',
+  'title',
+  'sourcePath',
+  'authors',
+  'doi',
+  'arxivId',
+]
+
+export function validateResearchDocumentParams(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, error: 'arguments must be an object' }
+  }
+  const unk = checkUnknownProperties(raw, DOCUMENT_ALLOWED_KEYS)
+  if (unk) return { ok: false, error: unk }
+  const action = raw.action
+  if (typeof action !== 'string' || !RESEARCH_DOCUMENT_ACTIONS.includes(action.trim())) {
+    return { ok: false, error: 'action must be one of: ' + RESEARCH_DOCUMENT_ACTIONS.join(', ') }
+  }
+  const trimmedAction = action.trim()
+  const workspace = typeof raw.workspace === 'string' && raw.workspace.trim() ? raw.workspace.trim() : undefined
+
+  return {
+    ok: true,
+    value: {
+      action: trimmedAction,
+      documentPath: raw.documentPath,
+      docId: raw.docId || raw.id,
+      id: raw.id || raw.docId,
+      text: raw.text,
+      section: raw.section,
+      query: raw.query,
+      contextChars: raw.contextChars !== undefined ? Number(raw.contextChars) : undefined,
+      title: raw.title,
+      sourcePath: raw.sourcePath,
+      authors: raw.authors,
+      doi: raw.doi,
+      arxivId: raw.arxivId,
+      workspace,
+    },
+  }
+}
+
+const JOB_ALLOWED_KEYS = [
+  'action',
+  'jobId',
+  'id',
+  'type',
+  'title',
+  'status',
+  'progress',
+  'message',
+  'event',
+  'reason',
+  'payload',
+  'result',
+  'workspace',
+]
+
+export function validateResearchJobParams(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, error: 'arguments must be an object' }
+  }
+  const unk = checkUnknownProperties(raw, JOB_ALLOWED_KEYS)
+  if (unk) return { ok: false, error: unk }
+  const action = raw.action
+  if (typeof action !== 'string' || !RESEARCH_JOB_ACTIONS.includes(action.trim())) {
+    return { ok: false, error: 'action must be one of: ' + RESEARCH_JOB_ACTIONS.join(', ') }
+  }
+  const trimmedAction = action.trim()
+  const workspace = typeof raw.workspace === 'string' && raw.workspace.trim() ? raw.workspace.trim() : undefined
+
+  return {
+    ok: true,
+    value: {
+      action: trimmedAction,
+      jobId: raw.jobId || raw.id,
+      id: raw.id || raw.jobId,
+      type: raw.type,
+      title: raw.title,
+      status: raw.status,
+      progress: raw.progress !== undefined ? Number(raw.progress) : undefined,
+      message: raw.message,
+      event: raw.event,
+      reason: raw.reason,
+      payload: raw.payload,
+      result: raw.result,
+      workspace,
+    },
+  }
 }

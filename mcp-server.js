@@ -13,6 +13,8 @@ import { runResearchStatus } from './tools/research-status.js'
 import { runResearchQuery } from './gateway-query.js'
 import { runResearchEvidence } from './gateway-evidence.js'
 import { runResearchCompute } from './compute/compute-gateway.js'
+import { runResearchDocument } from './gateway-document.js'
+import { runResearchJob } from './gateway-job.js'
 import {
   JOURNAL_PALETTE_SCHEMA,
   PAPER_LOOKUP_SCHEMA,
@@ -21,6 +23,8 @@ import {
   RESEARCH_QUERY_SCHEMA,
   RESEARCH_EVIDENCE_SCHEMA,
   RESEARCH_COMPUTE_SCHEMA,
+  RESEARCH_DOCUMENT_SCHEMA,
+  RESEARCH_JOB_SCHEMA,
   TOOL_DESCRIPTIONS,
   validateJournalPaletteParams,
   validatePaperLookupParams,
@@ -29,6 +33,8 @@ import {
   validateResearchQueryParams,
   validateResearchEvidenceParams,
   validateResearchComputeParams,
+  validateResearchDocumentParams,
+  validateResearchJobParams,
 } from './tool-contracts.js'
 
 const PROTOCOL = '2024-11-05'
@@ -68,6 +74,16 @@ export const MCP_TOOLS = [
     name: 'research_compute',
     description: TOOL_DESCRIPTIONS.research_compute,
     inputSchema: RESEARCH_COMPUTE_SCHEMA,
+  },
+  {
+    name: 'research_document',
+    description: TOOL_DESCRIPTIONS.research_document,
+    inputSchema: RESEARCH_DOCUMENT_SCHEMA,
+  },
+  {
+    name: 'research_job',
+    description: TOOL_DESCRIPTIONS.research_job,
+    inputSchema: RESEARCH_JOB_SCHEMA,
   },
 ]
 
@@ -184,6 +200,20 @@ export async function handleMcpMessage(msg) {
           return fail(effectiveId, -32602, validated.error)
         }
         return ok(effectiveId, asText(await runResearchCompute(validated.value)))
+      }
+      if (name === 'research_document') {
+        const validated = validateResearchDocumentParams(rawArgs)
+        if (!validated.ok) {
+          return fail(effectiveId, -32602, validated.error)
+        }
+        return ok(effectiveId, asText(await runResearchDocument(validated.value)))
+      }
+      if (name === 'research_job') {
+        const validated = validateResearchJobParams(rawArgs)
+        if (!validated.ok) {
+          return fail(effectiveId, -32602, validated.error)
+        }
+        return ok(effectiveId, asText(await runResearchJob(validated.value)))
       }
       return fail(effectiveId, -32601, 'Unknown tool: ' + String(name))
     }

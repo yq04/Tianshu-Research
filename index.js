@@ -6,6 +6,8 @@ import { runResearchStatus } from './tools/research-status.js'
 import { runResearchQuery } from './gateway-query.js'
 import { runResearchEvidence } from './gateway-evidence.js'
 import { runResearchCompute } from './compute/compute-gateway.js'
+import { runResearchDocument } from './gateway-document.js'
+import { runResearchJob } from './gateway-job.js'
 import {
   JOURNAL_PALETTE_SCHEMA,
   PAPER_LOOKUP_SCHEMA,
@@ -14,6 +16,8 @@ import {
   RESEARCH_QUERY_SCHEMA,
   RESEARCH_EVIDENCE_SCHEMA,
   RESEARCH_COMPUTE_SCHEMA,
+  RESEARCH_DOCUMENT_SCHEMA,
+  RESEARCH_JOB_SCHEMA,
   TOOL_DESCRIPTIONS,
 } from './tool-contracts.js'
 
@@ -91,6 +95,28 @@ export const tools = [
       input_schema: RESEARCH_COMPUTE_SCHEMA,
     },
     execute: (params) => runResearchCompute(params),
+    requiresApproval: () => false,
+    isConcurrencySafe: () => true,
+    isEnabled: () => true,
+  },
+  {
+    definition: {
+      name: 'research_document',
+      description: TOOL_DESCRIPTIONS.research_document,
+      input_schema: RESEARCH_DOCUMENT_SCHEMA,
+    },
+    execute: (params) => runResearchDocument(params),
+    requiresApproval: () => false,
+    isConcurrencySafe: () => true,
+    isEnabled: () => true,
+  },
+  {
+    definition: {
+      name: 'research_job',
+      description: TOOL_DESCRIPTIONS.research_job,
+      input_schema: RESEARCH_JOB_SCHEMA,
+    },
+    execute: (params) => runResearchJob(params),
     requiresApproval: () => false,
     isConcurrencySafe: () => true,
     isEnabled: () => true,

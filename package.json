@@ -1,36 +1,9 @@
 {
   "name": "tianshu-research",
   "version": "0.1.0",
-  "description": "OA literature search (arXiv + OpenAlex), Evidence Ledger, journal palettes, plus research-flow skill for Tianshu and MCP hosts",
+  "description": "OA literature search (arXiv + OpenAlex), Evidence Ledger, journal palettes, plus research-flow skill",
+  "private": true,
   "type": "module",
-  "main": "index.js",
-  "bin": {
-    "tianshu-research-mcp": "./mcp-server.js"
-  },
-  "scripts": {
-    "test": "node --test test/*.test.js",
-    "test:python": "python -B -m unittest discover -s test -p test_journal_palette.py"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yq04/Tianshu-Research.git"
-  },
-  "keywords": [
-    "tianshu",
-    "mcp",
-    "research",
-    "arxiv",
-    "openalex",
-    "evidence-ledger",
-    "journal-palette",
-    "color-palette"
-  ],
-  "author": "yq04",
-  "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/yq04/Tianshu-Research/issues"
-  },
-  "homepage": "https://github.com/yq04/Tianshu-Research#readme",
   "tianshu": {
     "name": "tianshu-research",
     "version": "0.1.0",
@@ -64,6 +37,14 @@
       {
         "name": "research_compute",
         "description": "Scientific calculation gateway: dimensional analysis, numerical spot-checks, and optional SymPy symbolic calculus."
+      },
+      {
+        "name": "research_document",
+        "description": "Scientific document inspection, section-level parsing, exact text locating, and local ingestion."
+      },
+      {
+        "name": "research_job",
+        "description": "Asynchronous research task management with state transitions, progress tracking, and structured reporting."
       }
     ],
     "skills": [

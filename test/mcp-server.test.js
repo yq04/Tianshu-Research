@@ -22,11 +22,13 @@ describe('tianshu-research MCP stdio protocol', () => {
       'paper_lookup',
       'paper_search',
       'research_compute',
+      'research_document',
       'research_evidence',
+      'research_job',
       'research_query',
       'research_status',
     ])
-    assert.equal(MCP_TOOLS.length, 7)
+    assert.equal(MCP_TOOLS.length, 9)
   })
 
   it('negotiates unsupported protocol version to 2024-11-05', async () => {
