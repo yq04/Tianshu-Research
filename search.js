@@ -3,9 +3,42 @@
  * Not a replacement for paper-search-mcp (20 sources); enough for click-to-use screening.
  */
 
+export function getOpenAlexMailto() {
+  return process.env.OPENALEX_MAILTO?.trim() || 'tianshu-research@users.noreply.github.com'
+}
+
 export const USER_AGENT = 'TianshuResearch/0.1 (https://github.com/huiliyi37/Tianshu-harness)'
 const FETCH_MS = 12_000
 const MAX_LIMIT = 8
+
+let lastArxivReqTime = 0
+let arxivQueue = Promise.resolve()
+let arxivMinIntervalMs = 3000
+
+export function _setArxivMinIntervalForTest(ms) {
+  arxivMinIntervalMs = ms
+}
+
+export function _resetArxivThrottleForTest() {
+  lastArxivReqTime = 0
+  arxivQueue = Promise.resolve()
+  arxivMinIntervalMs = 3000
+}
+
+export async function scheduleArxiv(fn) {
+  const run = async () => {
+    const now = Date.now()
+    const elapsed = now - lastArxivReqTime
+    if (elapsed < arxivMinIntervalMs && lastArxivReqTime > 0) {
+      await new Promise((resolve) => setTimeout(resolve, arxivMinIntervalMs - elapsed))
+    }
+    lastArxivReqTime = Date.now()
+    return fn()
+  }
+  const next = arxivQueue.then(run, run)
+  arxivQueue = next.catch(() => {})
+  return next
+}
 
 export function clampLimit(n) {
   const v = Number(n)
@@ -239,10 +272,19 @@ async function fetchText(url, fetchImpl) {
   try {
     const res = await fetchImpl(url, {
       signal: ctrl.signal,
-      headers: { 'User-Agent': USER_AGENT, Accept: 'application/atom+xml, application/json, */*' },
+      headers: {
+        'User-Agent': `TianshuResearch/0.1 (mailto:${getOpenAlexMailto()}; https://github.com/huiliyi37/Tianshu-harness)`,
+        Accept: 'application/atom+xml, application/json, */*',
+      },
     })
     const body = await res.text()
     if (!res.ok) {
+      if (res.status === 429) {
+        throw new Error(`429 Too Many Requests: 数据源速率受限 (${url})，请稍后重试或配置专用 API 密钥`)
+      }
+      if (res.status === 403) {
+        throw new Error(`403 Forbidden: 数据源访问受限 (${url})，请检查网络代理或配置合法 OPENALEX_MAILTO`)
+      }
       throw new Error(`${res.status} ${url}: ${body.slice(0, 180)}`)
     }
     return body
@@ -254,13 +296,17 @@ async function fetchText(url, fetchImpl) {
 export async function searchArxiv(query, limit, fetchImpl = fetch) {
   const n = clampLimit(limit)
   const url = `https://export.arxiv.org/api/query?search_query=${encodeURIComponent(`all:${query}`)}&start=0&max_results=${n}`
-  const xml = await fetchText(url, fetchImpl)
+  const xml = await scheduleArxiv(() => fetchText(url, fetchImpl))
   return parseArxivAtom(xml).slice(0, n)
 }
 
 export async function searchOpenAlex(query, limit, fetchImpl = fetch) {
   const n = clampLimit(limit)
-  const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&filter=is_oa:true&per_page=${n}`
+  const mailto = getOpenAlexMailto()
+  let url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&filter=is_oa:true&per_page=${n}&mailto=${encodeURIComponent(mailto)}`
+  if (process.env.OPENALEX_API_KEY?.trim()) {
+    url += `&api_key=${encodeURIComponent(process.env.OPENALEX_API_KEY.trim())}`
+  }
   const raw = await fetchText(url, fetchImpl)
   let data
   try {
@@ -275,7 +321,7 @@ export async function searchOpenAlex(query, limit, fetchImpl = fetch) {
 export async function lookupArxiv(arxivId, fetchImpl = fetch) {
   const id = String(arxivId).replace(/^arxiv:/i, '').replace(/v\d+$/, '').trim()
   const url = `https://export.arxiv.org/api/query?id_list=${encodeURIComponent(id)}`
-  const xml = await fetchText(url, fetchImpl)
+  const xml = await scheduleArxiv(() => fetchText(url, fetchImpl))
   const papers = parseArxivAtom(xml)
   return papers[0] ?? null
 }
@@ -285,7 +331,11 @@ export async function lookupOpenAlexDoi(doi, fetchImpl = fetch) {
   if (!/^10\.\d{4,}\/\S+$/.test(clean)) {
     throw new Error(`不像 DOI：${doi}`)
   }
-  const url = `https://api.openalex.org/works/doi:${encodeURIComponent(clean)}`
+  const mailto = getOpenAlexMailto()
+  let url = `https://api.openalex.org/works/doi:${encodeURIComponent(clean)}?mailto=${encodeURIComponent(mailto)}`
+  if (process.env.OPENALEX_API_KEY?.trim()) {
+    url += `&api_key=${encodeURIComponent(process.env.OPENALEX_API_KEY.trim())}`
+  }
   const raw = await fetchText(url, fetchImpl)
   try {
     return mapOpenAlexWork(JSON.parse(raw))
@@ -319,6 +369,10 @@ export function formatPaperCard(paper) {
     `- landing: ${paper.landingUrl || '—'}`,
     `- pdf: ${paper.pdfUrl || '（无 OA PDF）'}`,
   ]
+  if (paper.arxivId) {
+    const cleanId = String(paper.arxivId).replace(/^arxiv:/i, '').replace(/v\d+$/, '').trim()
+    lines.push(`- html: https://arxiv.org/html/${cleanId}`)
+  }
   if (paper.oaUrl) {
     lines.push(`- oa_landing: ${paper.oaUrl}`)
   }

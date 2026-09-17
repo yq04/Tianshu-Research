@@ -11,40 +11,20 @@
     "entry": "index.js",
     "tools": [
       {
-        "name": "research_status",
-        "description": "Inspect research workspace status, evidence ledger statistics, search engine readiness, and journal figure palettes."
-      },
-      {
         "name": "research_query",
-        "description": "Unified scholarly query gateway for paper search and metadata resolution across arXiv and OpenAlex."
+        "description": "Read-only scholarly query gateway for paper search and metadata resolution across arXiv and OpenAlex."
       },
       {
         "name": "research_evidence",
         "description": "Structured scientific evidence ledger gateway. Manage sources, exact-locator evidence, and claims in the research workspace."
       },
       {
-        "name": "paper_search",
-        "description": "Search arXiv and OpenAlex for OA papers"
-      },
-      {
-        "name": "paper_lookup",
-        "description": "Look up one paper by arXiv id or DOI"
-      },
-      {
         "name": "journal_palette",
-        "description": "Journal figure hex palettes (100 curated publication palettes for Python)"
+        "description": "Journal figure hex palettes (100 curated publication palettes for Python). id 1–100, role, or ColorBrewer name."
       },
       {
-        "name": "research_compute",
-        "description": "Scientific calculation gateway: dimensional analysis, numerical spot-checks, and optional SymPy symbolic calculus."
-      },
-      {
-        "name": "research_document",
-        "description": "Scientific document inspection, section-level parsing, exact text locating, and local ingestion."
-      },
-      {
-        "name": "research_job",
-        "description": "Asynchronous research task management with state transitions, progress tracking, and structured reporting."
+        "name": "research_status",
+        "description": "Optional diagnostic tool to inspect research workspace status, evidence ledger statistics, and palettes."
       }
     ],
     "skills": [
@@ -57,5 +37,14 @@
       "net": true,
       "fs": true
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yq04/Tianshu-Research.git"
+  },
+  "homepage": "https://github.com/yq04/Tianshu-Research#readme",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "test:python": "python test/test_journal_palette.py"
   }
 }

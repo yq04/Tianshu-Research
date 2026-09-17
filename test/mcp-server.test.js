@@ -19,16 +19,11 @@ describe('tianshu-research MCP stdio protocol', () => {
     const names = listed.result.tools.map((t) => t.name)
     assert.deepEqual(names.sort(), [
       'journal_palette',
-      'paper_lookup',
-      'paper_search',
-      'research_compute',
-      'research_document',
       'research_evidence',
-      'research_job',
       'research_query',
       'research_status',
     ])
-    assert.equal(MCP_TOOLS.length, 9)
+    assert.equal(MCP_TOOLS.length, 4)
   })
 
   it('negotiates unsupported protocol version to 2024-11-05', async () => {
@@ -59,15 +54,15 @@ describe('tianshu-research MCP stdio protocol', () => {
     assert.equal(nonObj.error.code, -32600)
   })
 
-  it('tools/call paper_search with empty query returns -32602 invalid params', async () => {
+  it('tools/call paper_search returns -32601 unknown tool', async () => {
     const res = await handleMcpMessage({
       jsonrpc: '2.0',
       id: 4,
       method: 'tools/call',
       params: { name: 'paper_search', arguments: { query: '' } },
     })
-    assert.equal(res.error.code, -32602)
-    assert.match(res.error.message, /query/)
+    assert.equal(res.error.code, -32601)
+    assert.match(res.error.message, /Unknown tool: paper_search/)
   })
 
   it('tools/call rejects explicit null arguments and unknown properties', async () => {
@@ -75,7 +70,7 @@ describe('tianshu-research MCP stdio protocol', () => {
       jsonrpc: '2.0',
       id: 40,
       method: 'tools/call',
-      params: { name: 'paper_search', arguments: null },
+      params: { name: 'research_query', arguments: null },
     })
     assert.equal(nullArgs.error.code, -32602)
 

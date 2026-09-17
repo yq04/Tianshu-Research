@@ -24,8 +24,8 @@ export function runResearchStatus(params = {}) {
     `  - 证据片段 (Evidence): ${summary.evidenceCount} 条`,
     `  - 科学主张 (Claims): ${summary.claimsCount} 项`,
     '- **学术检索引擎 (Search Engines)**:',
-    '  - arXiv: 就绪 (Atom API / CS·物理·数学前沿预印本)',
-    '  - OpenAlex: 就绪 (REST API / 2.5亿+ 跨学科开放元数据)',
+    '  - arXiv: 已配置实现 (尚未探测 / unprobed)',
+    '  - OpenAlex: 已配置实现 (尚未探测 / unprobed)',
     '- **可视化色板 (Figure Palettes)**:',
     `  - 顶刊配色库: 就绪 (100 套出版级配色，支持 ${ROLES.length} 类科学角色)`,
     '',
@@ -42,8 +42,8 @@ export function runResearchStatus(params = {}) {
       researchDir,
       ledger: summary,
       engines: {
-        arxiv: 'ready',
-        openalex: 'ready',
+        arxiv: 'unprobed',
+        openalex: 'unprobed',
       },
       palettes: {
         count: 100,

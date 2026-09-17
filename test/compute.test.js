@@ -106,6 +106,15 @@ describe('Research Compute Gateway & Tools', () => {
       assert.equal(res.consistent, false)
       assert.ok(res.difference.T)
     })
+
+    it('returns consistent:false and lists unknown symbols when identifier is not recognized', () => {
+      const res = checkDimensions('foo', 'bar')
+      assert.equal(res.consistent, false)
+      assert.ok(Array.isArray(res.unknown))
+      assert.ok(res.unknown.includes('foo'))
+      assert.ok(res.unknown.includes('bar'))
+      assert.ok(res.message.includes('未知量纲符号'))
+    })
   })
 
   describe('numericEval (Numerical Spot-Checks)', () => {
@@ -160,7 +169,7 @@ describe('Research Compute Gateway & Tools', () => {
       assert.ok(symRes.content.length > 0)
     })
 
-    it('invokes research_compute via MCP stdio message handler', async () => {
+        it('invokes research_compute via MCP stdio message handler returning unknown tool', async () => {
       const res = await handleMcpMessage({
         jsonrpc: '2.0',
         id: 100,
@@ -176,7 +185,8 @@ describe('Research Compute Gateway & Tools', () => {
       })
       assert.equal(res.jsonrpc, '2.0')
       assert.equal(res.id, 100)
-      assert.ok(res.result.content[0].text.includes('量纲检验一致'))
+      assert.equal(res.error.code, -32601)
+      assert.match(res.error.message, /Unknown tool: research_compute/)
     })
   })
 })

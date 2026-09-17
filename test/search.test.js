@@ -13,6 +13,11 @@ import {
   parsePaperRef,
   reconstructInvertedAbstract,
   searchPapers,
+  searchOpenAlex,
+  formatPaperCard,
+  getOpenAlexMailto,
+  _setArxivMinIntervalForTest,
+  _resetArxivThrottleForTest,
 } from '../search.js'
 
 const fixtureDir = dirname(fileURLToPath(import.meta.url))
@@ -177,5 +182,47 @@ describe('tianshu-research search parsers', () => {
     assert.ok(seen.some((u) => u.includes('id_list=1706.03762')))
     assert.ok(!seen.some((u) => u.includes('search_query=')))
   })
-})
+  it('appends mailto parameter and api_key to OpenAlex works search', async () => {
+    const seenUrls = []
+    const fetchImpl = async (url) => {
+      seenUrls.push(String(url))
+      return { ok: true, text: async () => JSON.stringify({ results: [] }) }
+    }
+    process.env.OPENALEX_MAILTO = 'researcher@example.org'
+    process.env.OPENALEX_API_KEY = 'test_oa_key'
+    try {
+      await searchOpenAlex('pinn', 3, fetchImpl)
+      assert.ok(seenUrls.length === 1)
+      assert.ok(seenUrls[0].includes('mailto=researcher%40example.org'))
+      assert.ok(seenUrls[0].includes('api_key=test_oa_key'))
+    } finally {
+      delete process.env.OPENALEX_MAILTO
+      delete process.env.OPENALEX_API_KEY
+    }
+  })
 
+  it('formatPaperCard outputs arXiv HTML direct reading link', () => {
+    const card = formatPaperCard({
+      source: 'arxiv',
+      title: 'Physics-informed neural networks',
+      arxivId: '1711.10561v1',
+      pdfUrl: 'https://arxiv.org/pdf/1711.10561v1',
+    })
+    assert.ok(card.includes('- html: https://arxiv.org/html/1711.10561'))
+  })
+
+  it('handles 429 and 403 errors with structured friendly guidance', async () => {
+    _setArxivMinIntervalForTest(0)
+    try {
+      const fetch429 = async () => ({ ok: false, status: 429, text: async () => 'Too Many Requests' })
+      const res429 = await searchPapers({ query: 'quantum', source: 'arxiv', fetchImpl: fetch429 })
+      assert.ok(res429.errors.some((e) => e.includes('429 Too Many Requests') && e.includes('数据源速率受限')))
+
+      const fetch403 = async () => ({ ok: false, status: 403, text: async () => 'Forbidden' })
+      const res403 = await searchPapers({ query: 'quantum', source: 'openalex', fetchImpl: fetch403 })
+      assert.ok(res403.errors.some((e) => e.includes('403 Forbidden') && e.includes('数据源访问受限')))
+    } finally {
+      _resetArxivThrottleForTest()
+    }
+  })
+});

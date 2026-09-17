@@ -55,8 +55,30 @@ describe('Document Parser Core', () => {
     const matches = locateText(parsed, 'ASTM E399')
     assert.equal(matches.length, 1)
     assert.equal(matches[0].locator.section, '2. Experimental Methods')
-    assert.equal(matches[0].locator.page, 1)
+    assert.equal(matches[0].locator.page, undefined)
+    assert.ok(matches[0].locator.lineStart > 0)
+    assert.ok(matches[0].locator.charOffset > 0)
     assert.ok(matches[0].snippet.includes('ASTM E399 standards'))
+  })
+
+  it('rejects PDF content fail-closed with clear guidance', () => {
+    assert.throws(() => {
+      parseDocument('%PDF-1.4 binary stream mock')
+    }, /检测到 PDF 格式/)
+  })
+
+  it('rejects unsafe docId containing path separators or traversal', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'tianshu-doc-safe-'))
+    try {
+      assert.throws(() => {
+        ingestDocument(tmp, '../evil_id', 'text')
+      }, /docId must be a safe single-segment identifier/)
+      assert.throws(() => {
+        ingestDocument(tmp, 'sub/dir', 'text')
+      }, /docId must be a safe single-segment identifier/)
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
   })
 
   it('ingests and loads document round-trip in workspace', () => {

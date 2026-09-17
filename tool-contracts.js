@@ -139,6 +139,10 @@ export const RESEARCH_EVIDENCE_ACTIONS = [
   'query_evidence',
   'get_summary',
   'verify_ledger',
+  'ingest_document',
+  'read_section',
+  'export_csl_json',
+  'export_ris',
 ]
 
 export const RESEARCH_EVIDENCE_SCHEMA = {
@@ -147,7 +151,7 @@ export const RESEARCH_EVIDENCE_SCHEMA = {
     action: {
       type: 'string',
       enum: RESEARCH_EVIDENCE_ACTIONS,
-      description: 'Action: add_source, add_evidence, add_claim, query_evidence, get_summary, or verify_ledger',
+      description: 'Action: add_source, add_evidence, add_claim, query_evidence, get_summary, verify_ledger, ingest_document, read_section, export_csl_json, export_ris',
     },
     workspace: {
       type: 'string',
@@ -392,6 +396,36 @@ export const RESEARCH_JOB_SCHEMA = {
       type: 'object',
       description: 'Final result artifact for completed job',
     },
+    stateTransition: {
+      type: 'string',
+      description: 'CVM state machine transition (e.g. PLAN -> EXECUTE, EXECUTE -> REFLECT)',
+    },
+    state_transition: {
+      type: 'string',
+      description: 'Alias for stateTransition',
+    },
+    causalReason: {
+      type: 'string',
+      description: 'Semantic justification/cause for state transition or action outcome',
+    },
+    causal_reason: {
+      type: 'string',
+      description: 'Alias for causalReason',
+    },
+    confidence: {
+      type: 'number',
+      minimum: 0,
+      maximum: 1,
+      description: 'Confidence score (0.0 to 1.0) for the step decision or extraction',
+    },
+    metrics: {
+      type: 'object',
+      description: 'Context metrics, token usage, or domain performance indicators',
+    },
+    traceAction: {
+      type: 'string',
+      description: 'Action label associated with this causal trace event',
+    },
     workspace: {
       type: 'string',
       description: 'Optional workspace path (defaults to current working directory)',
@@ -402,24 +436,24 @@ export const RESEARCH_JOB_SCHEMA = {
 }
 
 export const TOOL_DESCRIPTIONS = {
-  paper_search:
-    'Search open-access papers on arXiv and/or OpenAlex. If query is an arXiv URL/id or DOI, looks up that one paper instead. Not a systematic review; paywalled venues and Google Scholar are not covered. After results, wait for the user to pick a paper.',
-  paper_lookup:
-    'Look up one paper by arXiv id, arXiv abs/pdf URL, or DOI. Returns metadata and OA PDF URL when available. Does not fetch paywalled full text.',
+  research_query:
+    'Read-only scholarly query gateway. Search OA literature across arXiv and OpenAlex, or resolve paper metadata by DOI/arXiv ID. Returns candidate list and abstracts in chat; does not write files or modify workspace.',
+  research_evidence:
+    'Structured scientific evidence ledger gateway. Used only when user asks to persist evidence or verify claims. Manage sources, exact locators, and claim verification in .rivet/research/ workspace.',
   journal_palette:
     'Return hex colors for journal figures (100 curated publication palettes for Python). id 1–100, role, or ColorBrewer name. mode=discrete or map. Not a plotting pipeline; not TUI themes. Omit args to list recommended roles only.',
   research_status:
-    'Inspect research workspace status, evidence ledger statistics, search engine readiness, and journal figure palettes.',
-  research_query:
-    'Unified scholarly query gateway for paper search and metadata resolution across arXiv and OpenAlex. Action: search_papers or resolve_paper.',
-  research_evidence:
-    'Structured scientific evidence ledger gateway. Manage sources, exact-locator evidence, and claims in the research workspace.',
+    'Optional diagnostic tool to inspect research workspace status, evidence ledger statistics, search engine configuration, and journal figure palettes.',
+  paper_search:
+    'Search open-access papers on arXiv and/or OpenAlex. Internal implementation function.',
+  paper_lookup:
+    'Look up one paper by arXiv id, arXiv abs/pdf URL, or DOI. Internal implementation function.',
   research_compute:
-    'Scientific calculation gateway. Perform dimensional consistency checks (SI/mechanics), numerical tolerance spot-checks, and optional SymPy symbolic calculus with graceful degradation.',
+    'Scientific calculation gateway (internal implementation).',
   research_document:
-    'Scientific document inspection and section reading gateway. Inspect document structure, read specific sections, extract exact locators for claims, and ingest papers into the workspace.',
+    'Scientific document parsing gateway (internal implementation).',
   research_job:
-    'Asynchronous research task engine gateway. Start, query, update, cancel, and report long-running multi-paper research workflows and state machines.',
+    'Asynchronous research task engine gateway (internal implementation).',
 }
 
 function checkUnknownProperties(raw, allowedKeys) {
@@ -600,6 +634,39 @@ export function validateResearchQueryParams(raw) {
     return { ok: true, value: { action: trimmedAction, id: id.trim() } }
   }
 
+  if (trimmedAction === 'read_section') {
+    const docId = (raw.docId || raw.id)
+    if (!docId || typeof docId !== 'string' || !docId.trim()) {
+      return { ok: false, error: 'docId (or id) is required for read_section' }
+    }
+    const section = raw.section ?? raw.sectionName ?? raw.heading
+    if (section === undefined || section === null || String(section).trim() === '') {
+      return { ok: false, error: 'section is required for read_section' }
+    }
+    return {
+      ok: true,
+      value: {
+        action: trimmedAction,
+        workspace,
+        docId: docId.trim(),
+        section: typeof section === 'number' ? section : String(section).trim(),
+        maxChars: raw.maxChars !== undefined ? Math.min(4000, Math.max(200, Number(raw.maxChars) || 2000)) : 2000,
+        offset: raw.offset !== undefined ? Math.max(0, Number(raw.offset) || 0) : 0,
+      },
+    }
+  }
+
+  if (trimmedAction === 'export_csl_json' || trimmedAction === 'export_ris') {
+    return {
+      ok: true,
+      value: {
+        action: trimmedAction,
+        workspace,
+        outputPath: typeof raw.outputPath === 'string' && raw.outputPath.trim() ? raw.outputPath.trim() : undefined,
+      },
+    }
+  }
+
   return { ok: false, error: 'Unsupported action: ' + trimmedAction }
 }
 
@@ -620,6 +687,7 @@ const EVIDENCE_ALLOWED_KEYS = [
   'arxivId',
   'landingUrl',
   'pdfUrl',
+  'documentId',
   'verification',
   'locator',
   'relation',
@@ -627,6 +695,16 @@ const EVIDENCE_ALLOWED_KEYS = [
   'statement',
   'evidenceIds',
   'status',
+  'docId',
+  'text',
+  'sourcePath',
+  'locatorThreshold',
+  'section',
+  'sectionName',
+  'heading',
+  'maxChars',
+  'offset',
+  'outputPath',
 ]
 
 export function validateResearchEvidenceParams(raw) {
@@ -662,6 +740,7 @@ export function validateResearchEvidenceParams(raw) {
       arxivId: raw.arxivId || srcObj.arxivId,
       landingUrl: raw.landingUrl || srcObj.landingUrl,
       pdfUrl: raw.pdfUrl || srcObj.pdfUrl,
+      documentId: raw.documentId || srcObj.documentId,
       verification: raw.verification || srcObj.verification || 'unverified',
     }
     return { ok: true, value: { action: trimmedAction, workspace, source } }
@@ -726,8 +805,38 @@ export function validateResearchEvidenceParams(raw) {
     return { ok: true, value: { action: trimmedAction, workspace, filter } }
   }
 
-  if (trimmedAction === 'get_summary' || trimmedAction === 'verify_ledger') {
+  if (trimmedAction === 'get_summary') {
     return { ok: true, value: { action: trimmedAction, workspace } }
+  }
+
+  if (trimmedAction === 'verify_ledger') {
+    return { ok: true, value: { action: trimmedAction, workspace, locatorThreshold: raw.locatorThreshold } }
+  }
+
+  if (trimmedAction === 'ingest_document') {
+    const docId = (raw.docId || raw.id)
+    if (!docId || typeof docId !== 'string' || !docId.trim()) {
+      return { ok: false, error: 'docId (or id) is required for ingest_document' }
+    }
+    const text = raw.text
+    const sourcePath = raw.sourcePath
+    if (!text && !sourcePath) {
+      return { ok: false, error: 'text or sourcePath is required for ingest_document' }
+    }
+    return {
+      ok: true,
+      value: {
+        action: trimmedAction,
+        workspace,
+        docId: docId.trim(),
+        text: typeof text === 'string' ? text : undefined,
+        sourcePath: typeof sourcePath === 'string' ? sourcePath.trim() : undefined,
+        title: typeof raw.title === 'string' ? raw.title.trim() : undefined,
+        doi: typeof raw.doi === 'string' ? raw.doi.trim() : undefined,
+        arxivId: typeof raw.arxivId === 'string' ? raw.arxivId.trim() : undefined,
+        authors: Array.isArray(raw.authors) ? raw.authors : undefined,
+      },
+    }
   }
 
   return { ok: false, error: 'Unsupported action: ' + trimmedAction }
@@ -882,6 +991,13 @@ const JOB_ALLOWED_KEYS = [
   'payload',
   'result',
   'workspace',
+  'stateTransition',
+  'state_transition',
+  'causalReason',
+  'causal_reason',
+  'confidence',
+  'metrics',
+  'traceAction',
 ]
 
 export function validateResearchJobParams(raw) {
@@ -912,6 +1028,13 @@ export function validateResearchJobParams(raw) {
       reason: raw.reason,
       payload: raw.payload,
       result: raw.result,
+      stateTransition: raw.stateTransition,
+      state_transition: raw.state_transition,
+      causalReason: raw.causalReason,
+      causal_reason: raw.causal_reason,
+      confidence: raw.confidence !== undefined ? Number(raw.confidence) : undefined,
+      metrics: raw.metrics,
+      traceAction: raw.traceAction,
       workspace,
     },
   }

@@ -2,6 +2,7 @@
  * Research Job Manager & State Machine for tianshu-research.
  * Manages asynchronous research tasks, event logging, and state transitions
  * in <workspace>/.rivet/research/runs/<jobId>/.
+ * Implements Cognitive Virtual Machine (CVM) Causal Trace event logging.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, readdirSync } from 'node:fs'
@@ -46,11 +47,16 @@ export function createJob(workspace, options = {}) {
   writeFileSync(join(jobDir, 'job.json'), JSON.stringify(job, null, 2), 'utf8')
 
   const initialEvent = {
-    event: 'job_created',
+    event: options.event || 'job_created',
     status: 'queued',
     progress: 0,
     timestamp: now,
-    message: 'Job initialized and queued',
+    message: options.message || 'Job initialized and queued',
+    stateTransition: options.stateTransition || options.state_transition || 'IDLE -> PLAN',
+    action: options.action || options.traceAction || 'create_job',
+    confidence: options.confidence !== undefined ? options.confidence : 1.0,
+    causalReason: options.causalReason || options.causal_reason || 'Job created and initialized',
+    ...(options.metrics ? { metrics: options.metrics } : {}),
   }
   writeFileSync(join(jobDir, 'events.jsonl'), JSON.stringify(initialEvent) + '\n', 'utf8')
 
@@ -126,13 +132,40 @@ export function updateJob(workspace, jobId, updates = {}) {
 
   writeFileSync(join(jobDir, 'job.json'), JSON.stringify(toSave, null, 2), 'utf8')
 
-  if (updates.event || updates.message) {
+  const hasEventTrigger = Boolean(
+    current.status !== updated.status ||
+    updates.event ||
+    updates.message ||
+    updates.stateTransition ||
+    updates.state_transition ||
+    updates.causalReason ||
+    updates.causal_reason ||
+    updates.confidence !== undefined ||
+    updates.metrics ||
+    updates.traceAction
+  )
+
+  if (hasEventTrigger) {
+    const stateTransition =
+      updates.stateTransition ||
+      updates.state_transition ||
+      (current.status !== updated.status ? `${current.status.toUpperCase()} -> ${updated.status.toUpperCase()}` : undefined)
+    const causalReason = updates.causalReason || updates.causal_reason
+    const confidence = updates.confidence !== undefined ? updates.confidence : undefined
+    const metrics = updates.metrics
+    const traceAction = updates.traceAction
+
     const ev = {
       event: updates.event || 'status_update',
       status: updated.status,
       progress: updated.progress,
       timestamp: now,
       message: updates.message || '',
+      ...(stateTransition ? { stateTransition } : {}),
+      ...(traceAction ? { action: traceAction } : {}),
+      ...(confidence !== undefined ? { confidence } : {}),
+      ...(causalReason ? { causalReason } : {}),
+      ...(metrics ? { metrics } : {}),
     }
     appendFileSync(join(jobDir, 'events.jsonl'), JSON.stringify(ev) + '\n', 'utf8')
     if (Array.isArray(updated.events)) {
@@ -150,6 +183,9 @@ export function cancelJob(workspace, jobId, reason = 'user_cancelled') {
     status: 'cancelled',
     event: 'job_cancelled',
     message: `Job cancelled: ${reason}`,
+    stateTransition: 'RUNNING -> HALT',
+    traceAction: 'cancel_job',
+    causalReason: reason,
   })
 }
 
@@ -195,9 +231,28 @@ export function renderJobReport(job) {
   }
 
   if (job.events && job.events.length > 0) {
-    lines.push('', '#### ⏱️ 事件时间线 (Timeline)')
+    lines.push('', '#### ⏱️ 事件与因果追踪 (Causal Trace Timeline)')
     for (const ev of job.events) {
-      lines.push(`- ` + '`[' + ev.status + ']` ' + (ev.message || ev.event) + ` *(${ev.timestamp})*`)
+      let line = `- ` + '`[' + ev.status.toUpperCase() + ']`'
+      if (ev.stateTransition) {
+        line += ' `' + ev.stateTransition + '`'
+      }
+      if (ev.action) {
+        line += ' [action: ' + ev.action + ']'
+      }
+      line += ': ' + (ev.message || ev.event)
+      if (ev.confidence !== undefined) {
+        line += ' (conf: ' + ev.confidence + ')'
+      }
+      if (ev.causalReason) {
+        line += ' — *Reason: ' + ev.causalReason + '*'
+      }
+      if (ev.metrics) {
+        const metricStr = typeof ev.metrics === 'object' ? JSON.stringify(ev.metrics) : String(ev.metrics)
+        line += ' [metrics: ' + metricStr + ']'
+      }
+      line += ' *(' + ev.timestamp + ')*'
+      lines.push(line)
     }
   }
 

@@ -169,8 +169,14 @@ function tokenize(str) {
 }
 
 export function parseDimension(expr, customUnits = {}) {
+  const result = parseDimensionWithUnknown(expr, customUnits)
+  return result.powers
+}
+
+export function parseDimensionWithUnknown(expr, customUnits = {}) {
   const tokens = tokenize(expr)
   const lookup = { ...KNOWN_DIMENSIONS, ...customUnits }
+  const unknown = []
   let pos = 0
 
   function parseFactor() {
@@ -194,7 +200,11 @@ export function parseDimension(expr, customUnits = {}) {
     if (t.type === 'id') {
       pos++
       const key = t.value.toLowerCase()
-      return lookup[key] ? { ...lookup[key] } : {}
+      if (lookup[key] !== undefined) {
+        return { ...lookup[key] }
+      }
+      unknown.push(t.value)
+      return {}
     }
     if (t.type === 'num') {
       pos++
@@ -233,12 +243,28 @@ export function parseDimension(expr, customUnits = {}) {
     return left
   }
 
-  return parseTerm()
+  const powers = parseTerm()
+  return { powers, unknown: [...new Set(unknown)] }
 }
 
 export function checkDimensions(lhsExpr, rhsExpr, customUnits = {}) {
-  const lhsPowers = parseDimension(lhsExpr, customUnits)
-  const rhsPowers = parseDimension(rhsExpr, customUnits)
+  const lhsRes = parseDimensionWithUnknown(lhsExpr, customUnits)
+  const rhsRes = parseDimensionWithUnknown(rhsExpr, customUnits)
+  const unknown = [...new Set([...lhsRes.unknown, ...rhsRes.unknown])]
+
+  if (unknown.length > 0) {
+    return {
+      consistent: false,
+      unknown,
+      lhsPowers: lhsRes.powers,
+      rhsPowers: rhsRes.powers,
+      difference: null,
+      message: '❌ 量纲检验无法判定: 表达式中包含未知量纲符号 [' + unknown.join(', ') + ']，请在 customUnits 中声明定义。',
+    }
+  }
+
+  const lhsPowers = lhsRes.powers
+  const rhsPowers = rhsRes.powers
 
   const allKeys = new Set([...Object.keys(lhsPowers), ...Object.keys(rhsPowers)])
   const diff = {}
@@ -255,13 +281,13 @@ export function checkDimensions(lhsExpr, rhsExpr, customUnits = {}) {
   }
 
   const formatPowers = (p) => {
-    const parts = Object.entries(p).map(([k, v]) => (v === 1 ? k : `${k}^${v}`))
-    return parts.length > 0 ? `[${parts.join(' · ')}]` : '[无量纲 / 1]'
+    const parts = Object.entries(p).map(([k, v]) => (v === 1 ? k : k + '^' + v))
+    return parts.length > 0 ? '[' + parts.join(' · ') + ']' : '[无量纲 / 1]'
   }
 
   const msg = consistent
-    ? `✅ 量纲检验一致 (Consistent): ${lhsExpr} ${formatPowers(lhsPowers)} = ${rhsExpr} ${formatPowers(rhsPowers)}`
-    : `❌ 量纲检验不匹配 (Inconsistent): ${lhsExpr} ${formatPowers(lhsPowers)} ≠ ${rhsExpr} ${formatPowers(rhsPowers)}`
+    ? '✅ 量纲检验一致 (Consistent): ' + lhsExpr + ' ' + formatPowers(lhsPowers) + ' = ' + rhsExpr + ' ' + formatPowers(rhsPowers)
+    : '❌ 量纲检验不匹配 (Inconsistent): ' + lhsExpr + ' ' + formatPowers(lhsPowers) + ' ≠ ' + rhsExpr + ' ' + formatPowers(rhsPowers)
 
   return {
     consistent,

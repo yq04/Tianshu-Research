@@ -23,6 +23,12 @@ export async function runResearchJob(params = {}) {
         type: params.type || 'batch_task',
         title: params.title || 'Asynchronous Research Run',
         payload: params.payload || {},
+        message: params.message,
+        stateTransition: params.stateTransition || params.state_transition,
+        causalReason: params.causalReason || params.causal_reason,
+        confidence: params.confidence,
+        metrics: params.metrics,
+        traceAction: params.traceAction,
       })
       return {
         content: `🚀 异步科研任务已启动 [${job.id}]: ${job.title}\n当前状态: ${job.status} (进度: ${job.progress}%)\n日志目录: .rivet/research/runs/${job.id}/`,
@@ -56,6 +62,11 @@ export async function runResearchJob(params = {}) {
         message: params.message,
         result: params.result,
         error: params.error,
+        stateTransition: params.stateTransition || params.state_transition,
+        causalReason: params.causalReason || params.causal_reason,
+        confidence: params.confidence,
+        metrics: params.metrics,
+        traceAction: params.traceAction,
       })
       return {
         content: `✅ 任务 [${job.id}] 已更新为: ${job.status} (${job.progress}%)`,
@@ -117,4 +128,3 @@ export async function runResearchJob(params = {}) {
     }
   }
 }
-

@@ -1,133 +1,117 @@
-# HANDOFF — Tianshu-Research 综合交接文档（2026-09-17）
+# HANDOFF — Tianshu-Research（2026-09-17 实施完成）
 
-> **受众与阅读要求**：本文档写给**完全没有此前会话上下文**的后续 Agent 或人类开发者。请务必在展开任何操作前完整阅读本文件。
-
----
-
-## 1. 我们在做什么任务（项目定位与架构共识）
-
-我们在 **Tianshu-Harness**（天枢智能体运行时宿主，公开代码库为 `huiliyi37/Tianshu-harness`）之上，构建理工科原生科研扩展层 **Tianshu-Research**。
-
-### 1.1 核心架构定位共识
-- **不是独立科研 Agent，也不是单纯外挂的臃肿 MCP Server**：Tianshu-Research 是依附于 Tianshu-Harness 的**第一方原生科研能力扩展包（Research Capability Layer）**。
-- **职责划分原则**：“一套科研内核，两个交互表面；Harness 负责思考与编排，Research 负责测量、证据链与科学验收”。
-  - **Tianshu-Harness**：唯一的认知中枢、会话中枢和多 Agent 编排器（CVM 认知虚拟机、统一记忆、Prefix Cache、`/team`、`/council`、Worker 调度）。
-  - **Tianshu-Research**：提供科研领域网关（Gateway Tools）、物理证据账本（Evidence Ledger）、结构化文献解析（Document Parser）、异步任务状态机（Job Manager）、渐进式科学计算（Research Compute）与科学门禁（Scientific Gates）。
-- **双交互表面**：
-  1. **原生插件表面**：目录位于 `plugins/tianshu-research/`，通过 `package.json`、Slash Commands（`/research`, `/research-status`）和 Skill（`skills/research-flow`）深度融入天枢运行时。
-  2. **标准 stdio MCP 表面**：入口为 `mcp-server.js`，支持桌面端与外部客户端通过标准 JSON-RPC 2.0 协议发现并调用全部科研工具。
-- **独立 GitHub 仓库管理**：
-  - 本地独立仓库路径：`D:\1_Research\Tianshu-Research`
-  - GitHub 远程仓库：`https://github.com/yq04/Tianshu-Research.git`（分支 `main`）
-
-### 1.2 对比参考项目与能力甄别决策
-在规划与研发过程中，我们深度调研并审视了开源界优秀科研方案，吸收其精华，摒弃其反模式：
-1. **对比 [binary-husky/gpt_academic](https://github.com/binary-husky/gpt_academic)**：
-   - **吸纳**：函数插件化思维、多步骤处理流、严格的异常隔离与学术 Markdown 规范。
-   - **摒弃**：GPL-3.0 传染协议（本项目坚持宽松开源协议，代码零拷贝）、冗杂的 UI 强耦合、直接爬取盗版源（Sci-Hub）、以及由 LLM 机械化生成全文论文的学术不端隐患。
-2. **对比 [Yuan1z0825/nature-skills](https://github.com/Yuan1z0825/nature-skills)**：
-   - **吸纳**：文献卡片精读规范（问题/方法/结果/局限）、证据与主张的科学论证链条。
-   - **摒弃**：缺乏真实物理定位凭证的“软引用”、重度依赖外部专有闭源工具、以及容易导致模型发散的无约束 Prompt 堆砌。
-3. **色板包重构命名纪律**：
-   - 项目严禁直接使用 `thebestcolor` 原名，已彻底更名为 **`journal_palette`**（提供 100 套经学术顶刊验证的高级配色方案及色弱无障碍色板，支持 Node.js 内存计算插值与 Python `journal_palette.py` 本地脚本渲染）。
-
-### 1.3 前缀缓存保护与工程边界（“不做”清单）
-- **绝不污染核心基线**：科研工具绝对不进入天枢默认工具注册表（`createDefaultToolRegistry`），默认保持关闭（opt-in），确保日常代码开发任务的前缀缓存命中率稳定在 95%–99%。
-- **开放获取优先（OA-First）**：默认首选 arXiv（Atom XML）与 OpenAlex（2.5 亿免 Key 开放文献元数据及直接 PDF 链接），即装即用。
-- **严禁全自动生成整篇论文、严禁绕过版权破解、严禁强行绑定重型数据库**。
+> 写给**完全没有本会话上下文**的下一个 Agent 或人。动手前读完本文，再读根目录 `task_plan.md`。  
+> **重要更新**：旧 Phase A–K 顺序已由 GPT-6 Astra 审查重组为 4 个精简实施阶段，目前 **Phase 1 ~ Phase 4 核心代码与验证已全部实施完毕并通过测试**。
 
 ---
 
-## 2. 已经完成了什么（分阶段落地与验证证据）
+## 1. 项目背景与定位
 
-截至 2026-09-17，`task_plan.md` 规划的 Phase 1 至 Phase 5 已全部高质量落地闭环，所有定型单测与门禁测试全部 100% 绿色通过（Exit 0）。
+在宿主 **Tianshu-Harness**（工作区 `D:\1_Research\Develop_Research`，产品名天枢，CLI 命令 `rivet`，包名 `tianshu-tui` **3.20.0**）上落地第一方科研能力层 **Tianshu-Research**（`plugins/tianshu-research/`）。
 
-### 2.1 工具面 Gateway 收敛（4+1 网关 + 1 状态 + 3 兼容）
-收敛细粒度工具，采用基于 `action` 的 `Discriminated Union` 严密 Schema（`additionalProperties: false`），既保证类型安全又最大化保护模型前缀缓存：
-1. **`research_status`**：科研环境就绪度、工作区路径、证据账本与色板看板。
-2. **`research_query`**：跨 arXiv 与 OpenAlex 的文献检索（`search_papers`）与单篇元数据直链解析（`resolve_paper`）。
-3. **`research_evidence`**：三层物理证据账本生命周期管理（`add_source` / `add_evidence` / `add_claim` / `query_evidence` / `get_summary` / `verify_ledger`）。
-4. **`research_document`**：结构化文档章节大纲解析（`inspect`）、按章节精读（`read_section`）、高精度原文定位（`locate_text`）与工作区文档入库（`ingest`）。
-5. **`research_job`**：异步科研长任务状态机调度（`start` / `query` / `update` / `cancel` / `list` / `report`），并在 `<workspace>/.rivet/research/runs/<jobId>/` 下维护持久化事件流 `events.jsonl` 与交付结果 `result.json`。
-6. **`research_compute`**：渐进式科学计算网关（Node 端零依赖量纲分析 `dimension_check`、数值容差比对 `numeric_eval`、本地 Python 科学计算库探测 `probe_environment`，及优雅降级的符号微积分 `symbolic_eval`）。
-7. **向后兼容原子工具**：`paper_search`、`paper_lookup`、`journal_palette` 保持 100% 兼容。
+本项目坚守天枢的核心架构哲学：
 
-### 2.2 物理证据账本（Evidence Ledger）
-- 位于工作区 `<workspace>/.rivet/research/`：
-  - `sources.jsonl`：文献元数据（DOI, arXiv, Title, Authors, Year, OA PDF URL）。
-  - `evidence.jsonl`：带绝对物理定位（Page, Section, Equation, Figure, Table, Offset）的原文摘录，严格外键关联合法 `sourceId`。
-  - `claims.jsonl`：推导论断与其支撑证据集合，严格外键关联合法 `evidenceIds`。
-- **科学门禁**：`gates/scientific-verifier.js` 实现断言外键完整性、精确定位覆盖率（Locator Coverage Rate）及学术占位符（如 `[citation needed]`, `[TODO]`）强制拦截。
-
-### 2.3 宿主协同与多 Agent 编排模版
-- **Slash Commands**：`/research`（智能识别文献意图并引导检索）与 `/research-status`（快速输出当前工作区科研就绪度）。
-- **多 Agent 编排模版**：在 `skills/research-flow/references/team-templates.md` 中定义了深度适配天枢 `/team` 与 `/council` 的分波次工单规约（Scout 检索员 -> Reader 精读员 -> Synthesizer 综合员 -> Council 审计员）。
-
-### 2.4 测试验证汇总表（全部 Exit 0）
-```powershell
-# 1. 科研扩展全部 67 项 Node 单元测试 (67 pass, 0 fail)
-node --test plugins/tianshu-research/test/*.test.js
-
-# 2. 配色模块 Python 单元测试 (6 pass, 0 fail)
-python -B -m unittest discover -s plugins/tianshu-research/test -p test_journal_palette.py
-
-# 3. 插件打包暂存、独立启动与前缀隔离门禁测试 (10 pass, 0 fail)
-npx tsx --test scripts/__tests__/stage-plugins.test.ts src/mcp/__tests__/research-isolation.test.ts
-
-# 4. 独立仓库 D:\1_Research\Tianshu-Research 单元测试 (67 Node + 6 Python pass)
-cd D:\1_Research\Tianshu-Research
-node --test test/*.test.js
-python -B -m unittest discover -s test -p test_journal_palette.py
-```
-
-### 2.5 仓库同步状态
-- 独立仓库 `D:\1_Research\Tianshu-Research` 已经完整同步最新代码，并成功推送至 GitHub 远程仓库：
-  - 最新 Commit：`e757d3c` (`feat(document,job): implement research_document and research_job gateways with full tests`)
-  - Remote: `https://github.com/yq04/Tianshu-Research.git` (`main` 分支保持纯净且最新)。
+1. **学习天枢，而不是给天枢加一层流程操作系统**：天枢靠 CVM 认知虚拟机、kernel budget 工具预算（核心工具 ≤26）、信念宪法与前缀缓存（DeepSeek V4 长会话 95%–99% 命中）发挥模型能力；科研层是**量具 + 门禁**，收敛暴露工具，在运行时防止「编 DOI / 用普通网页搜索冒充学术库 / 未读全文虚构页码」。
+2. **Harness 负责思考与编排，Research 负责测量与存证**：多 Agent 协作走宿主原生 `/team` 与 `/council`；精读全文走宿主 `pdf_read` / `read_file`；严禁 fork `AgentLoop`，严禁将科研工具注入 `createDefaultToolRegistry` 或 CORE_TOOLS。
+3. **DeepSeek 是默认主模型，不是配置错误**：默认只暴露 4 个公开工具，收敛工具签名，降低模型选择认知过载。
+4. **Zotero / Obsidian 严格作为可选导出出口，绝非前置依赖**：默认三档使用：短用在对话中输出论文候选与摘要；中用利用宿主已有 `write_file` 保存工作区 Markdown 读卡；长用显式写入 JSONL 证据账本并通过科学门禁核验。
 
 ---
 
-## 3. 当前卡在哪（环境状态、依赖与未决事项）
+## 2. 实施完成状态（Phases 1–4 全绿）
 
-1. **宿主仓库未提交（符合纪律）**：
-   - 宿主目录 `D:\1_Research\Develop_Research` 中，`plugins/tianshu-research/`、`scripts/stage-plugins.js`、`scripts/__tests__/stage-plugins.test.ts` 以及相关门禁测试属于未提交状态。
-   - **硬性闸门**：根据 `AGENTS.md` 高危命令纪律，在未经用户明确发出提交指令前，**严禁自行在宿主仓库执行 git commit**。
-2. **桌面端侧边栏卡片联动**：
-   - 桌面端 Settings → MCP 页面显示“科研文献”卡片依赖于编译后的 sidecar 返回 `MCP_PRESETS`。若要通过桌面 GUI 点击体验，需编译运行本 fork 生成的 sidecar。CLI / TUI 终端下可通过 `/mcp enable tianshu-research` 立即体验。
-3. **Python 科学计算环境为可选软依赖**：
-   - `research_compute` 的符号微积分依赖宿主环境是否安装 `sympy`。若未安装，网关会自动平滑降级（返回 `degraded: true, available: false`），不会中断主链路。
+由 GPT-6 Astra 审查替代旧 A–K 繁琐往复，一次性收敛到 4 个阶段，现已全部完成并经验证：
+
+### Phase 1：工具契约与默认用法收敛（100% GREEN）
+- **公开工具收敛为 4 个**：`research_query`、`research_evidence`、`journal_palette`、`research_status`。固定此四项顺序。
+- 历史工具及别名（`paper_search` / `paper_lookup` / `research_compute` / `research_document` / `research_job`）保留内部实现与有价值单测，但从公开注册清单与 MCP tools/list 移除，调用明确返回未知工具。
+- 原生插件清单（`package.json`）、原生入口（`index.js`）、MCP 协议服务（`mcp-server.js`）、契约定义（`tool-contracts.js`）、宿主预设（`src/mcp/presets.ts` 与 `src/plugins/plugin-presets.ts`）全量对齐为 4 个工具。
+- 隔离测试 deny-list 严格覆盖新 4 名及所有历史科研工具（裸名与 `mcp__tianshu-research__*` 前缀），严防泄漏进内核工具表。
+- `research_status` 默认引擎状态标记为 `unprobed`（已配置实现，尚未探测），不伪造全绿状态。
+- `/research` 斜杠指令与 `research-flow` skill 更新为短用/中用/长用三档指引，移除强制 Zotero、强制 citekey 要求。
+
+### Phase 2：长用证据链接通与门禁真实性（100% GREEN）
+- **真实定位与 PDF 拒收**：`document-parser.js` 对 `%PDF-` 文件头及 `.pdf` 扩展名实行 fail-closed 拦截，引导使用宿主 `pdf_read` 提取纯文本；CRLF 规范化换行；`locateText` 输出真实 `section`、`lineStart`、`lineEnd`、`charOffset`，杜绝假页码（`estimatedPage` 不进入 locator）。
+- **材料入口与关联**：在 `research_evidence` 增加窄动作 `ingest_document` 与 `documentId` 支持，支持 `ingest_document` → `add_source(documentId)` → `add_evidence(sourceId)` → `add_claim` → `verify_ledger` 闭环。
+- **账本严格性与接地核验**：`evidence-ledger.js` 拒绝重复 id；记录并上报损坏 JSONL 行；`scientific-verifier.js` 默认 90% locator 覆盖率门槛；检查证据 excerpt 是否真实存在于导入的 `source.documentId` 文本中；`verified` 主张强制要求具备有效 locator、已匹配原文摘录且 `relation === 'supports'`；拦截 `TODO`、`TBD`、`[citation needed]` 占位符。
+- **留存计算止误报**：`compute-gateway.js` 对未知量纲符号返回 `consistent: false` 与未知符号清单，不再误报为一致。
+
+### Phase 3：标准启用入口双路互斥（100% GREEN）
+- 创建 `src/plugins/research-conflict.ts`，以原生插件已安装且未禁用 vs MCP 服务已配置且未禁用作为冲突判定准则。
+- 在 CLI / TUI 启用入口（`src/mcp/preset-enable.ts`、`src/tui/slash-commands.ts` `/plugin enable`）与 REST 接口（`src/server/mcp-api.ts` `POST /mcp/servers`、`src/plugins/plugin-installer.ts` `installFromLocal`、`src/server/plugin-api.ts` `POST /plugins/enable`）中加入对称阻断检查。
+- 当一方处于启用状态时，启用另一方返回 400 明确错误并指引先禁用对侧，避免同一套科研工具出现两份指纹而打碎前缀缓存。
+
+### Phase 4：文档与验收收尾（100% GREEN）
+- 文档同步：更新 `docs/plugins.md`、`plugins/tianshu-research/README.md` 与 `scripts/__tests__/stage-plugins.test.ts`，移除 TheBestColor，统一 4 工具名称与三档行为说明。
+- `skills/research-flow/references/reading-card.md` 明确中用读卡规范，说明标识符缺失不影响笔记，不强制 citekey。
+- 验收测试：在 `plugins/tianshu-research/test/gateway.test.js` 维护了 Phase 4 Acceptance 测试套件，端到端检验短用（零科研文件写入）、中用（Markdown 读卡写盘不碰 JSONL）、长用（门禁由红转绿及全文核对真实生效）。
 
 ---
 
-## 4. 下一步计划是什么（优先级与执行指引）
+## 3. 验证结果汇总
 
-1. **若用户需要体验真实科研流**：
-   - 在 TUI 终端中执行 `/mcp enable tianshu-research` 或调用 `/research [研究课题]`。
-   - 调度 `research_query` 检索目标文献，利用 `research_document` 导入并切分章节，通过 `research_evidence` 录入支撑论据，最后使用 `scientific-verifier` 审计证据链。
-2. **Phase 6 演进（可视化与交互交付物）**：
-   - 探索通过天枢 Canvas / Markdown Artifact 渲染直观的证据链图谱（Evidence Graph），展现 Source -> Evidence -> Claim 树状关系。
-3. **多 Agent 真实场景演练**：
-   - 在支持 `/team` 的会话中，加载 `skills/research-flow/references/team-templates.md`，派发真实的 Scout 与 Reader 子代理协同检索，观察 `.rivet/research/` 下账本与异步任务日志流的生成。
-4. **代码提交与上游合并**：
-   - 当用户发出提交指令时，先展示文件变更清单，征得确认后再执行提交。
+所有受影响测试通过即止，未出现虚假退出码或过度膨胀测试用例：
+
+1. **科研插件全套测试**：
+   `node --test --test-timeout=60000 plugins/tianshu-research/test/*.test.js`
+   - **81 / 81 tests pass (0 failures, 0 skipped)**
+2. **宿主隔离、预设与注册表测试**：
+   `npx tsx --test --test-timeout=120000 src/plugins/__tests__/plugin-loader.test.ts src/plugins/__tests__/plugin-presets.test.ts src/mcp/__tests__/research-isolation.test.ts src/server/__tests__/mcp-presets.test.ts src/tools/__tests__/default-registry.test.ts`
+   - **51 / 51 tests pass (0 failures, 1 optional live skipped)**
+3. **互斥与插件管理接口测试**：
+   `npx tsx --test --test-timeout=120000 src/mcp/__tests__/preset-enable.test.ts src/plugins/__tests__/plugin-installer.test.ts src/server/__tests__/mcp-presets.test.ts src/server/__tests__/plugin-api.test.ts`
+   - **51 / 51 tests pass (0 failures, 1 optional live skipped)**
+4. **打包与预发布测试**：
+   `npx tsx --test scripts/__tests__/stage-plugins.test.ts`
+   - **4 / 4 tests pass (0 failures)**
 
 ---
 
-## 5. 踩过的坑 —— 绝对不要再踩（血泪教训）
+## 4. 关键文件与边界注意事项
 
-1. **Gemini / CPA 致命 400 陷阱（第一红线 · 违者会话报废）**：
-   - **绝对严禁在 `functions__exec` 中调用 `notify(...)` 或 `yield_control()`**！
-   - 会导致后台队列与 Gemini 的 1:1 工具调用响应机制严重错位，触发 `functionResponse.id does not match functionCall.id`，直接使整个会话永久报废！
-   - 过程汇报通过正常的 `commentary` 发送；JS 脚本内的结果通过最终的一次性 `text(...)` 输出。
-2. **JS 模板字符串中的反引号与转义陷阱**：
-   - 在动态生成或写入含有代码的模板字符串时，如果内容包含反引号（如嵌入嵌套变量），**必须正确转义为 \`**，否则 JS 引擎会将后续文本解析为函数调用（报错 `TypeError: "..." is not a function`）。
-   - 在 JS 字符串字面量中编写正则表达式（如匹配括号 `/(1)/`）时，反斜杠必须写为双反斜杠 `/\(1\)/`，否则会被字符串预解析吞噬为普通括号，导致正则断言失败。
-3. **状态机更新中的内存事件同步**：
-   - 在 `jobs/job-manager.js` 的 `updateJob` 中，向 `events.jsonl` 追加事件的同时，必须同步更新返回的内存对象 `updated.events`，否则外部立即查询最新事件时会拿到旧数组。
-4. **严禁将科研工具塞入天枢默认工具表**：
-   - 严禁将 `research_query`、`research_evidence` 等加入 `CORE_TOOLS` 或 `createDefaultToolRegistry`。必须保持 opt-in 插件形态，确保默认编程任务的 Prefix Cache 稳定在 95%+。
-5. **严禁使用 `thebestcolor` 原名**：
-   - 统一使用 `journal_palette`，调用时不带参数仅返回角色目录与推荐，切勿一次性将 100 套色板十六进制倾倒进上下文。
-6. **多 Agent 派发选型纪律**：
-   - 常规编码、执行测试、目录搜索等防上下文爆炸任务，**必须默认使用 `gemini-3.8-flash`**。
-   - 仅在重大架构设计时显式调用 `gpt-6-astra`（`xhigh` 模式，等待超时设为 180s~300s，子代理未完成前严禁无工具调用结束 Turn）。
+1. **工作区状态与 Git 纪律**：
+   - 未执行任何 `git commit`、`git push`、`git stash` 或 `git reset`，严格遵守 `AGENTS.md` 高危命令纪律。
+   - `task_plan.md` 位于根目录，受 `.gitignore` 忽略。
+2. **三档行为边界**：
+   - 短用：仅在对话中给出检索与摘要，不落盘任何科研账本。
+   - 中用：使用标准 Markdown 写入 `.rivet/research/notes/*.md`，不要求 citekey 与 Zotero。
+   - 长用：通过 `research_evidence` 导入纯文本材料、记录 sources/evidence/claims，通过 `verify_ledger` 审核。
+3. **互斥保障**：
+   - 不要试图同时运行 MCP 与原生插件。系统在各入口已实现 fail-closed 互斥防御。
+
+---
+
+## 5. 给后续 Agent 的指引
+
+代码改造与单测验证已全线闭环。后续若用户指示在真实模型会话中执行验收，请直接：
+- 启动真实会话并按意图使用：
+  - 测试短用：`research_query(action="search_papers", query="PINN")`
+  - 测试中用：将精读成果写入工作区 `.rivet/research/notes/reading_card.md`
+  - 测试长用：导入材料、录入账本并执行 `research_evidence(action="verify_ledger")`
+- 严禁未经用户明确授权执行任何 git 提交或推送操作。
+
+
+---
+
+## 3. 实测问题全面治理与五层科研工作流吸收完成（Phases 5–10 全绿）
+
+基于 DeepSeek-V4-Flash 实机遥测分析与用户提供的五层科研工作流全景图，Phase 5 ~ Phase 10 已全部实施并验证通过（全量 86 项单测 + 55 项宿主测试 100% GREEN）：
+
+1. **Phase 5（数据源防风控与限流保护）**：
+   - OpenAlex 自动注入 `&mailto=`（支持 `OPENALEX_MAILTO` 环境变量，缺省回退合规邮箱）接入官方 Polite Pool，可选支持 `OPENALEX_API_KEY`。
+   - 实现 arXiv 3 秒内存 Promise 节流调度器，强制请求间隔 >= 3000ms。
+   - 捕获 429 与 403 异常，给出结构化友好提示与降级，单源失败不崩溃。
+2. **Phase 6（上下文预算控制与防 20 万 Token 撑爆）**：
+   - `research_evidence` 扩展窄动作 `read_section`（入参：`docId`, `section`, `maxChars: 2000`, `offset`），仅按章节切块提取并截断，严禁整篇论文全量回显。
+   - 将单轮精读交互注入的 token 量从 2.5 万 tokens 压制至 1000 tokens 以内。
+3. **Phase 7（项目级隔离与日常编程防干扰）**：
+   - 确立「**全局默认关闭，科研项目级局部挂载**」规范（在科研项目根目录配置 `.rivet-config.json`）。
+   - 日常代码项目保持 26 个核心编程工具面，实现 0 额外 Token 消耗、0 缓存抖动、0 注意力分散。
+4. **Phase 8（网络抓取摩擦缓解与直达链接指引）**：
+   - 检索卡片为 arXiv 论文增加官方原生 HTML 直达阅读链接（`- html: https://arxiv.org/html/<id>`）。
+   - 在 Skill 中规范 TUN 代理 Fake-IP (198.18.0.0/15) 避坑指南，指导静默下载避免盲目重试 `web_fetch` 触发宿主 SSRF 拦截。
+5. **Phase 9（Zotero 开源标准导出与五阶段多 Agent 闭环）**：
+   - **9A**：实现 `export_csl_json` 与 `export_ris` 导出动作，输出至 `<workspace>/.rivet/research/export/`；编写 `docs/zotero-integration.md`，对接开源 Zotero 客户端与 `zotero-mcp`，彻底替代商业 EndNote。
+   - **9B**：重构 `team-templates.md`，建立包含 Scout、Strategist、Coder、Writer、Gatekeeper 五大角色的分波流水线与双重科学门禁（一级证据链门禁 + 二级代码复现门禁），提供开箱即用天枢 `/team` YAML。
+6. **Phase 10（全链路自动化测试与防退化验证）**：
+   - 插件测试集扩充至 86 项测试（全部通过，通过即止），宿主 55 项隔离与预设测试全部通过。

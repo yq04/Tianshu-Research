@@ -1,115 +1,179 @@
-# Tianshu-Research 多 Agent 科研协作与 WorkOrder 规范模版
+# Tianshu-Research 五阶段科研多 Agent 协作与 WorkOrder 规范模版
 
-> 本规范定义了基于 Tianshu-Harness 原生 `/team` 与 `/council` 编排器的科研多智能体拓扑结构。
-> **定位准则**：Tianshu-Harness 是唯一的认知中枢与任务调度器；Tianshu-Research 提供专业科研工具面、结构化证据账本（Evidence Ledger）与科学门禁（Scientific Gate）。
+> 本模版吸收现代五层科研工作流架构，映射至 Tianshu-Harness 原生 `/team` 与 `/council` 编排器。
+> **核心定位**：Tianshu-Harness 负责思考调度与多智能体分波；Tianshu-Research 提供专业工具网关、结构化证据账本（Evidence Ledger）与双重科学门禁（Scientific Gates）。
 
 ---
 
-## 1. 科研多智能体协作拓扑 (Team Topology)
+## 1. 五阶段闭环科研协作拓扑 (5-Phase Research Topology)
 
-文献综述、假设求证与对比实验采用标准四阶段分波（Wave-Gate）架构：
+完整闭环工作流自上而下分为五个阶段：
 
 ```mermaid
 flowchart TD
-    W1[Wave 1: Scout / 学术侦察员] -->|候选论文清单 & DOI/arXiv ID| W2[Wave 2: Reader / 精读抽取员]
-    W2 -->|写入 sources.jsonl & evidence.jsonl| W3[Wave 3: Synthesizer / 跨文献综合员]
-    W3 -->|生成 claims.jsonl & 初稿报告| W4{Wave 4: Council / 科学门禁评审席}
-    W4 -->|门禁通过| Output[最终结构化综述 / 结论报告]
-    W4 -->|门禁未通过 (打回重构)| W2
+    subgraph W1[Wave 1: Scout 学术侦察员]
+        direction TB
+        A1[检索 OA 论文 / arXiv & OpenAlex] --> A2[提取 DOI/arXiv ID 候选卡]
+    end
+
+    subgraph W2[Wave 2: Strategist 创新与方案架构员]
+        direction TB
+        B1[分析 Research Gap 差距] --> B2[制定理论假设与实验复现方案]
+    end
+
+    subgraph W3[Wave 3: Coder 代码与实验复现员]
+        direction TB
+        C1[生成/运行算法与仿真代码] --> C2[产出基准测试数据与日志]
+    end
+
+    subgraph W4[Wave 4: Writer 学术分析与论文撰写员]
+        direction TB
+        D1[调用 journal_palette 统一图表配色] --> D2[撰写论文草稿与证据引用]
+    end
+
+    subgraph W5[Wave 5: Council Reviewer 双重科学门禁席]
+        direction TB
+        E1{一级门禁: 证据链核验<br>verify_ledger}
+        E2{二级门禁: 代码独立复现<br>Exit 0}
+    end
+
+    W1 -->|候选文献与标识| W2
+    W2 -->|假设与实验方案| W3
+    W3 -->|代码、数据与实验日志| W4
+    W4 -->|论文草稿、证据与图表| W5
+
+    E1 -->|通过| E2
+    E2 -->|全绿通过| Output[最终闭环科研成果: 论文/报告/复现包]
+
+    E1 -.->|违规打回·证据链不闭环| W1
+    E2 -.->|违规打回·代码复现失败| W3
 ```
 
 ---
 
-## 2. 角色工单定义 (WorkOrder Specifications)
+## 2. 角色工单规范 (WorkOrder Specifications)
 
-### 角色 1: Scout (文献初筛员)
-- **目标 (Objective)**: 围绕研究主题检索开放获取（OA）文献，过滤高相关度论文，提取标准标识符（arXiv ID, DOI, OA URL）。
-- **工具集**: `research_query` (action: `search_papers`)
-- **交付要求**:
-  1. 输出不超过 8 篇高相关文献列表，包含：标题、作者、发表年、DOI 或 arXiv ID、OA PDF 链接。
-  2. 严格杜绝使用通用 Web 搜索伪造论文引用。
-- **验收指令**:
+### Wave 1: Scout (学术检索与证据初筛员)
+- **对应业务阶段**：问题与文献
+- **目标 (Objective)**：围绕研究主题检索开放获取文献，提取标准标识（arXiv ID, DOI, OA URL），输出初筛候选卡。
+- **工具集**：`research_query` (action: `search_papers`, `resolve_paper`)
+- **交付要求**：
+  1. 输出不超过 8 篇高相关文献列表，包含：题名、作者、发表年、DOI 或 arXiv ID、OA PDF 链接。
+  2. 严禁使用通用 Web 搜索冒充学术文献。
+- **验收指令**：
   ```text
   assert results.every(p => p.doi || p.arxivId)
-  assert results.length >= 1
+  assert results.length >= 1 && results.length <= 8
   ```
 
----
-
-### 角色 2: Reader (精读与证据抽取员)
-- **目标 (Objective)**: 对初筛出的论文进行精读，提取实验数据、理论方法、对比结论及**精确物理定位**（页码、章节、图号、公式号），写入 Evidence Ledger。
-- **工具集**: `research_query` (action: `resolve_paper`), `research_evidence` (action: `add_source`, `add_evidence`)
-- **行为规范**:
-  1. 必须先通过 `add_source` 录入参考文献元数据，获取合法的 `sourceId`。
-  2. 提取具体观点时，调用 `add_evidence` 录入，且**必须附带非空 locator**（如 `page: 4, section: "3.2", figure: "Fig 2"`）。
-  3. 证据摘录（`excerpt`）必须为论文真实原文段落或核心数据，禁止泛化改写。
-- **验收指令**:
+### Wave 2: Strategist (创新与方案架构员)
+- **对应业务阶段**：创新与方案
+- **目标 (Objective)**：针对 Scout 提取的文献，分析 Research Gap，提炼核心创新点，提出可证伪的科学假设，并设计可复现的实验验证方案。
+- **工具集**：宿主原生思考能力、`research_evidence` (action: `add_source`)
+- **交付要求**：
+  1. 输出方案文档落盘至 `.rivet/research/notes/research-proposal.md`。
+  2. 明确定义：研究痛点、假设前提、量化指标、基准模型对比要求。
+- **验收指令**：
   ```text
-  assert evidence.every(e => e.sourceId && (e.locator.page || e.locator.section || e.locator.figure || e.locator.equation))
+  assert file_exists(".rivet/research/notes/research-proposal.md")
+  assert content.includes("假设") && content.includes("实验验证")
   ```
 
----
-
-### 角色 3: Synthesizer (科学综合员)
-- **目标 (Objective)**: 跨文献对比证据片段，提炼学术共识、前沿分歧与实验瓶颈，形成结构化科学断言（Claims），沉淀至账本。
-- **工具集**: `research_evidence` (action: `query_evidence`, `add_claim`)
-- **行为规范**:
-  1. 所有推导出的科学断言必须通过 `add_claim` 记录，并显式挂载 1 个或多个 `evidenceIds`。
-  2. 若存在多篇文献观点冲突（如算法性能在不同基准下表现不同），创建多条证据并准确标记 `relation: "supports" | "contradicts"`。
-  3. 未通读全文或证据不足的断言，状态严禁标记为 `verified`，须保持 `tentative`。
-- **验收指令**:
+### Wave 3: Coder (代码与实验复现员)
+- **对应业务阶段**：实验/代码验证
+- **目标 (Objective)**：根据 Strategist 的方案生成数值算法与仿真复现脚本，通过宿主终端执行实验，保存基准测试数据与日志。
+- **工具集**：宿主原生终端能力 (`bash` / `exec_command`)、`write_file`
+- **交付要求**：
+  1. 实验代码落盘至 `experiments/` 目录，确保有确定性随机数种子与清晰 CLI 参数。
+  2. 运行脚本并将实验结果日志保存至 `experiments/logs/run.log`。
+  3. 脚本执行退出码必须为 0。
+- **验收指令**：
   ```text
-  assert claims.every(c => Array.isArray(c.evidenceIds) && c.evidenceIds.length > 0)
+  assert run_command("python experiments/run_benchmark.py") == 0
+  assert file_exists("experiments/logs/run.log")
+  ```
+
+### Wave 4: Writer (学术分析与论文撰写员)
+- **对应业务阶段**：分析与写作
+- **目标 (Objective)**：基于实验数据与文献材料撰写论文章节草稿；调用 `journal_palette` 获取顶刊规范配色，生成符合出版要求的 Python 绘图脚本。
+- **工具集**：`journal_palette`、`research_evidence` (action: `add_evidence`, `add_claim`, `export_csl_json`, `export_ris`)、宿主文件写入
+- **交付要求**：
+  1. 论文草稿落盘至 `manuscript/draft.md`。
+  2. 生成 Matplotlib 绘图脚本并保存图表至 `figures/`。
+  3. 将涉及的关键事实与数值写入证据账本，导出标准 CSL-JSON 与 RIS 文献格式。
+- **验收指令**：
+  ```text
+  assert file_exists("manuscript/draft.md")
+  assert file_exists(".rivet/research/export/literature.csl.json")
+  assert file_exists(".rivet/research/export/literature.ris")
+  ```
+
+### Wave 5: Council Gatekeeper (审稿与质量控制席)
+- **对应业务阶段**：审稿与双重质控
+- **目标 (Objective)**：组织严谨独立的同行评审与双重科学门禁审查，严格阻止学术幻觉与无法复现的代码进入交付。
+- **双重科学门禁**：
+  - **一级门禁（证据链审查）**：调用 `research_evidence(action="verify_ledger", locatorThreshold=0.9)`。
+    - 要求：100% Locator 覆盖，无未解析的悬空引用，全文 Grounding 摘录完全匹配，零严重错误。
+  - **二级门禁（代码复现审查）**：在干净的执行环境中重新执行实验代码，对比生成指标是否一致。
+    - 要求：脚本 Exit 0，输出关键数值指标在允许公差范围（RelDiff ≤ 1e-4）内。
+- **闭环迭代机制**：
+  - 若一级门禁未过：生成违规清单（缺失 Locator 或摘录不符），打回 Wave 1 / Wave 4 补齐证据。
+  - 若二级门禁未过：生成报错堆栈与差异日志，打回 Wave 3 重新排查修复代码。
+- **验收指令**：
+  ```text
+  assert verify_ledger().data.passed === true
+  assert reproduce_experiment() === 0
   ```
 
 ---
 
-### 角色 4: Council Reviewer (科学门禁评审席)
-- **目标 (Objective)**: 运用科学门禁（Scientific Gate）对整份证据账本及综述报告进行全量审计，防范悬空断言与伪造引用。
-- **工具集**: `research_evidence` (action: `verify_ledger`), `research_status`
-- **审查准则**:
-  1. **引用闭环**: 检查 `sources.jsonl`、`evidence.jsonl`、`claims.jsonl` 间无任何悬空引用（Zero Orphan References）。
-  2. **定位覆盖率**: 证据定位覆盖率（Locator Coverage Rate）必须达到 90% 以上。
-  3. **未读与占位拦截**: 状态为 `verified` 的断言中绝不允许出现 `TODO`、`未读全文`、`无法判断` 等占位关键词。
-  4. **审查决策**:
-     - 若 `verify_ledger` 返回 `passed: true`，予以批准交付。
-     - 若返回 `passed: false`，按违规清单打回至 Reader / Synthesizer 修正。
+## 3. 天枢原生 /team 编排 YAML 配置
 
----
-
-## 3. Harness `/team` 快速启动配置范例
-
-在天枢终端或会话中，可直接按照以下格式下发科研团队任务：
+用户可直接将以下配置作为天枢 Team 任务执行：
 
 ```yaml
-mission: "针对量子错误缓解（Quantum Error Mitigation）近三年最新进展进行证据链综述"
-tasks:
-  - id: "scout_task"
-    title: "检索 QEM 核心开放获取论文"
-    profile: "cheap_search"
-    kind: "explore"
-    verification:
-      - "research_query search_papers --query 'quantum error mitigation zero noise extrapolation' --limit 5"
-  - id: "reader_task"
-    title: "提取核心文献方法与实验数据证据"
-    dependsOn: ["scout_task"]
-    profile: "deep_reader"
-    kind: "execute"
-    verification:
-      - "research_evidence query_evidence --limit 10"
-  - id: "synthesis_task"
-    title: "提炼科学断言并构建综述报告"
-    dependsOn: ["reader_task"]
-    profile: "synthesizer"
-    kind: "execute"
-    verification:
-      - "research_evidence get_summary"
-  - id: "council_gate"
-    title: "执行科学证据门禁审计"
-    dependsOn: ["synthesis_task"]
-    profile: "council_reviewer"
-    kind: "review"
-    verification:
-      - "research_evidence verify_ledger"
+team:
+  name: "full-loop-research-team"
+  description: "五阶段闭环科研协作多智能体团队"
+  waves:
+    - wave: 1
+      name: "scout-wave"
+      agents:
+        - name: "scout"
+          role: "academic_scout"
+          tools: ["mcp__tianshu-research__research_query"]
+          task: "围绕用户主题检索 3~5 篇高水平 OA 论文，提取真实 DOI 与 arXiv ID"
+
+    - wave: 2
+      name: "strategist-wave"
+      agents:
+        - name: "strategist"
+          role: "research_architect"
+          tools: ["write_file", "read_file"]
+          task: "基于文献初筛分析 Research Gap，提炼创新假设与数值验证方案"
+
+    - wave: 3
+      name: "coder-wave"
+      agents:
+        - name: "coder"
+          role: "experiment_engineer"
+          tools: ["write_file", "exec_command"]
+          task: "编写算法复现脚本并执行实验，将测试日志与指标落盘"
+
+    - wave: 4
+      name: "writer-wave"
+      agents:
+        - name: "writer"
+          role: "scientific_writer"
+          tools: ["mcp__tianshu-research__journal_palette", "mcp__tianshu-research__research_evidence", "write_file"]
+          task: "使用顶刊色板生成图表，撰写论文章节，导出 CSL-JSON 与 RIS"
+
+    - wave: 5
+      name: "council-wave"
+      agents:
+        - name: "gatekeeper"
+          role: "peer_reviewer"
+          tools: ["mcp__tianshu-research__research_evidence", "exec_command"]
+          task: "执行双重门禁：调用 verify_ledger 核验全部证据，复跑实验验证代码 Exit 0"
 ```
 

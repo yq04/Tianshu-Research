@@ -10,8 +10,13 @@ import { join, resolve } from 'node:path'
 const CHARS_PER_PAGE = 2500
 
 export function parseDocument(rawText) {
-  const text = String(rawText || '')
-  const lines = text.split(/\r?\n/)
+  if (typeof rawText === 'string' && rawText.trim().startsWith('%PDF-')) {
+    throw new Error('检测到 PDF 格式。本插件不直接解析二进制 PDF，请使用天枢内置 pdf_read 提取文本后再导入。')
+  }
+
+  // Normalize CRLF to LF for deterministic character offsets and line counts
+  const text = String(rawText || '').replace(/\r\n/g, '\n')
+  const lines = text.split('\n')
 
   const rawSections = []
   let currentSection = null
@@ -41,7 +46,7 @@ export function parseDocument(rawText) {
           headingLevel = m[1].length
           matchedHeading = m[2].trim()
         } else if (m[2]) {
-          matchedHeading = `${m[1]} ${m[2].trim()}`
+          matchedHeading = m[1] + ' ' + m[2].trim()
           headingLevel = m[1].replace(/\.$/, '').includes('.') ? 3 : 2
         } else {
           matchedHeading = m[1].trim()
@@ -138,21 +143,19 @@ export function readSection(parsedDoc, selector) {
     const idx = Number(selector)
     const sec = parsedDoc.sections.find((s) => s.index === idx)
     if (!sec) {
-      throw new Error(`Section index ${idx} not found (total sections: ${parsedDoc.sections.length})`)
+      throw new Error('Section index ' + idx + ' not found (total sections: ' + parsedDoc.sections.length + ')')
     }
     return sec
   }
 
   const query = String(selector).toLowerCase().trim()
-  // Exact match first
   let found = parsedDoc.sections.find((s) => s.title.toLowerCase() === query)
   if (!found) {
-    // Substring match
     found = parsedDoc.sections.find((s) => s.title.toLowerCase().includes(query))
   }
 
   if (!found) {
-    throw new Error(`Section matching "${selector}" not found. Available: ${parsedDoc.sections.map((s) => s.title).join(', ')}`)
+    throw new Error('Section matching "' + selector + '" not found. Available: ' + parsedDoc.sections.map((s) => s.title).join(', '))
   }
 
   return found
@@ -171,6 +174,25 @@ export function locateText(parsedDoc, query, contextChars = 100) {
   const lowerText = text.toLowerCase()
   const lowerQ = q.toLowerCase()
 
+  // Precompute line offsets for accurate lineStart and lineEnd
+  const lineOffsets = [0]
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '\n') lineOffsets.push(i + 1)
+  }
+
+  function getLineNumber(charIdx) {
+    let low = 0, high = lineOffsets.length - 1
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2)
+      if (lineOffsets[mid] <= charIdx) {
+        low = mid + 1
+      } else {
+        high = mid - 1
+      }
+    }
+    return high + 1
+  }
+
   const matches = []
   let pos = 0
 
@@ -184,14 +206,17 @@ export function locateText(parsedDoc, query, contextChars = 100) {
 
     // Find enclosing section
     const sec = parsedDoc.sections.find((s) => matchIdx >= s.charStart && matchIdx < s.charEnd)
-    const page = Math.floor(matchIdx / CHARS_PER_PAGE) + 1
     const sectionName = sec ? sec.title : (parsedDoc.abstract ? 'Abstract' : 'Preamble')
+
+    const lineStart = getLineNumber(matchIdx)
+    const lineEnd = getLineNumber(matchIdx + q.length)
 
     matches.push({
       query: q,
       locator: {
-        page,
         section: sectionName,
+        lineStart,
+        lineEnd,
         charOffset: matchIdx,
       },
       snippet,
@@ -208,13 +233,26 @@ export function getDocumentsDir(workspace = process.cwd()) {
 }
 
 export function ingestDocument(workspace, docId, rawText, metadata = {}) {
-  const dir = getDocumentsDir(workspace)
-  const targetDir = join(dir, docId)
-  mkdirSync(targetDir, { recursive: true })
+  if (!docId || typeof docId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(docId.trim())) {
+    throw new Error('docId must be a safe single-segment identifier containing only letters, numbers, underscores or hyphens')
+  }
+  const safeDocId = docId.trim()
+
+  if (metadata.sourcePath && String(metadata.sourcePath).toLowerCase().endsWith('.pdf')) {
+    throw new Error('检测到 PDF 文件扩展名。本插件不直接解析二进制 PDF，请使用天枢内置 pdf_read 提取文本后再导入。')
+  }
+  if (typeof rawText === 'string' && rawText.trim().startsWith('%PDF-')) {
+    throw new Error('检测到 PDF 格式。本插件不直接解析二进制 PDF，请使用天枢内置 pdf_read 提取文本后再导入。')
+  }
 
   const parsed = parseDocument(rawText)
+
+  const dir = getDocumentsDir(workspace)
+  const targetDir = join(dir, safeDocId)
+  mkdirSync(targetDir, { recursive: true })
+
   const meta = {
-    id: docId,
+    id: safeDocId,
     title: metadata.title || parsed.title,
     doi: metadata.doi || null,
     arxivId: metadata.arxivId || null,
@@ -225,7 +263,6 @@ export function ingestDocument(workspace, docId, rawText, metadata = {}) {
       index: s.index,
       title: s.title,
       level: s.level,
-      page: s.estimatedPage,
       charStart: s.charStart,
       charEnd: s.charEnd,
     })),
@@ -233,19 +270,23 @@ export function ingestDocument(workspace, docId, rawText, metadata = {}) {
   }
 
   writeFileSync(join(targetDir, 'meta.json'), JSON.stringify(meta, null, 2), 'utf8')
-  writeFileSync(join(targetDir, 'content.txt'), rawText, 'utf8')
+  writeFileSync(join(targetDir, 'content.txt'), parsed.rawText, 'utf8')
 
-  return { id: docId, meta, parsed }
+  return { id: safeDocId, meta, parsed }
 }
 
 export function loadDocument(workspace, docId) {
+  if (!docId || typeof docId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(docId.trim())) {
+    throw new Error('docId must be a safe single-segment identifier')
+  }
+  const safeDocId = docId.trim()
   const dir = getDocumentsDir(workspace)
-  const targetDir = join(dir, docId)
+  const targetDir = join(dir, safeDocId)
   const metaFile = join(targetDir, 'meta.json')
   const contentFile = join(targetDir, 'content.txt')
 
   if (!existsSync(metaFile) || !existsSync(contentFile)) {
-    throw new Error(`Document "${docId}" not found in ${targetDir}`)
+    throw new Error('Document "' + safeDocId + '" not found in ' + targetDir)
   }
 
   const meta = JSON.parse(readFileSync(metaFile, 'utf8'))

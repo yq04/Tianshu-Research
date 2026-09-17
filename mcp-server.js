@@ -8,43 +8,24 @@ import { createInterface } from 'node:readline'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { runJournalPalette } from './figure.js'
-import { runPaperLookup, runPaperSearch } from './search.js'
 import { runResearchStatus } from './tools/research-status.js'
 import { runResearchQuery } from './gateway-query.js'
 import { runResearchEvidence } from './gateway-evidence.js'
-import { runResearchCompute } from './compute/compute-gateway.js'
-import { runResearchDocument } from './gateway-document.js'
-import { runResearchJob } from './gateway-job.js'
 import {
   JOURNAL_PALETTE_SCHEMA,
-  PAPER_LOOKUP_SCHEMA,
-  PAPER_SEARCH_SCHEMA,
   RESEARCH_STATUS_SCHEMA,
   RESEARCH_QUERY_SCHEMA,
   RESEARCH_EVIDENCE_SCHEMA,
-  RESEARCH_COMPUTE_SCHEMA,
-  RESEARCH_DOCUMENT_SCHEMA,
-  RESEARCH_JOB_SCHEMA,
   TOOL_DESCRIPTIONS,
   validateJournalPaletteParams,
-  validatePaperLookupParams,
-  validatePaperSearchParams,
   validateResearchStatusParams,
   validateResearchQueryParams,
   validateResearchEvidenceParams,
-  validateResearchComputeParams,
-  validateResearchDocumentParams,
-  validateResearchJobParams,
 } from './tool-contracts.js'
 
 const PROTOCOL = '2024-11-05'
 
 export const MCP_TOOLS = [
-  {
-    name: 'research_status',
-    description: TOOL_DESCRIPTIONS.research_status,
-    inputSchema: RESEARCH_STATUS_SCHEMA,
-  },
   {
     name: 'research_query',
     description: TOOL_DESCRIPTIONS.research_query,
@@ -56,34 +37,14 @@ export const MCP_TOOLS = [
     inputSchema: RESEARCH_EVIDENCE_SCHEMA,
   },
   {
-    name: 'paper_search',
-    description: TOOL_DESCRIPTIONS.paper_search,
-    inputSchema: PAPER_SEARCH_SCHEMA,
-  },
-  {
-    name: 'paper_lookup',
-    description: TOOL_DESCRIPTIONS.paper_lookup,
-    inputSchema: PAPER_LOOKUP_SCHEMA,
-  },
-  {
     name: 'journal_palette',
     description: TOOL_DESCRIPTIONS.journal_palette,
     inputSchema: JOURNAL_PALETTE_SCHEMA,
   },
   {
-    name: 'research_compute',
-    description: TOOL_DESCRIPTIONS.research_compute,
-    inputSchema: RESEARCH_COMPUTE_SCHEMA,
-  },
-  {
-    name: 'research_document',
-    description: TOOL_DESCRIPTIONS.research_document,
-    inputSchema: RESEARCH_DOCUMENT_SCHEMA,
-  },
-  {
-    name: 'research_job',
-    description: TOOL_DESCRIPTIONS.research_job,
-    inputSchema: RESEARCH_JOB_SCHEMA,
+    name: 'research_status',
+    description: TOOL_DESCRIPTIONS.research_status,
+    inputSchema: RESEARCH_STATUS_SCHEMA,
   },
 ]
 
@@ -143,7 +104,7 @@ export async function handleMcpMessage(msg) {
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: 'tianshu-research', version: '0.1.0' },
         instructions:
-          'OA literature screening (arXiv / OpenAlex), Evidence Ledger, and journal figure palettes. Use research_query or research_evidence for research tasks; journal_palette for hex colors. Wait for the user to pick a paper. Do not write a paper. Do not use web_search as a scholarly library.',
+          'OA literature screening (arXiv / OpenAlex), Evidence Ledger, and journal figure palettes. Use research_query for searching papers and resolving metadata (read-only); research_evidence only when user asks to persist evidence or verify claims; journal_palette for hex colors. Wait for the user to pick a paper. Do not write a paper. Do not use web_search as a scholarly library.',
       })
     }
     if (method === 'ping') return ok(effectiveId, {})
@@ -152,13 +113,6 @@ export async function handleMcpMessage(msg) {
       const name = msg.params?.name
       const rawArgs = msg.params ? (msg.params.arguments === undefined ? {} : msg.params.arguments) : {}
 
-      if (name === 'research_status') {
-        const validated = validateResearchStatusParams(rawArgs)
-        if (!validated.ok) {
-          return fail(effectiveId, -32602, validated.error)
-        }
-        return ok(effectiveId, asText(runResearchStatus(validated.value)))
-      }
       if (name === 'research_query') {
         const validated = validateResearchQueryParams(rawArgs)
         if (!validated.ok) {
@@ -173,20 +127,6 @@ export async function handleMcpMessage(msg) {
         }
         return ok(effectiveId, asText(await runResearchEvidence(validated.value)))
       }
-      if (name === 'paper_search') {
-        const validated = validatePaperSearchParams(rawArgs)
-        if (!validated.ok) {
-          return fail(effectiveId, -32602, validated.error)
-        }
-        return ok(effectiveId, asText(await runPaperSearch(validated.value)))
-      }
-      if (name === 'paper_lookup') {
-        const validated = validatePaperLookupParams(rawArgs)
-        if (!validated.ok) {
-          return fail(effectiveId, -32602, validated.error)
-        }
-        return ok(effectiveId, asText(await runPaperLookup(validated.value)))
-      }
       if (name === 'journal_palette') {
         const validated = validateJournalPaletteParams(rawArgs)
         if (!validated.ok) {
@@ -194,26 +134,12 @@ export async function handleMcpMessage(msg) {
         }
         return ok(effectiveId, asText(runJournalPalette(validated.value)))
       }
-      if (name === 'research_compute') {
-        const validated = validateResearchComputeParams(rawArgs)
+      if (name === 'research_status') {
+        const validated = validateResearchStatusParams(rawArgs)
         if (!validated.ok) {
           return fail(effectiveId, -32602, validated.error)
         }
-        return ok(effectiveId, asText(await runResearchCompute(validated.value)))
-      }
-      if (name === 'research_document') {
-        const validated = validateResearchDocumentParams(rawArgs)
-        if (!validated.ok) {
-          return fail(effectiveId, -32602, validated.error)
-        }
-        return ok(effectiveId, asText(await runResearchDocument(validated.value)))
-      }
-      if (name === 'research_job') {
-        const validated = validateResearchJobParams(rawArgs)
-        if (!validated.ok) {
-          return fail(effectiveId, -32602, validated.error)
-        }
-        return ok(effectiveId, asText(await runResearchJob(validated.value)))
+        return ok(effectiveId, asText(runResearchStatus(validated.value)))
       }
       return fail(effectiveId, -32601, 'Unknown tool: ' + String(name))
     }
@@ -233,11 +159,11 @@ function startStdio() {
       msg = JSON.parse(trimmed)
     } catch (err) {
       process.stderr.write('tianshu-research MCP: bad JSON: ' + (err instanceof Error ? err.message : String(err)) + '\n')
-      process.stdout.write(JSON.stringify(fail(null, -32700, 'Parse error: Invalid JSON')) + '\n')
+      process.stdout.write(JSON.stringify(fail(null, -32700, 'Parse error: Invalid JSON')) + String.fromCharCode(10))
       return
     }
     Promise.resolve(handleMcpMessage(msg)).then((res) => {
-      if (res) process.stdout.write(JSON.stringify(res) + '\n')
+      if (res) process.stdout.write(JSON.stringify(res) + String.fromCharCode(10))
     }).catch((err) => {
       process.stderr.write('tianshu-research MCP: ' + (err instanceof Error ? err.message : String(err)) + '\n')
     })
