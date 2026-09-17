@@ -1,7 +1,7 @@
 {
   "name": "tianshu-research",
   "version": "0.1.0",
-  "description": "OA literature search (arXiv + OpenAlex) plus journal palettes and a short research-flow skill for Tianshu and MCP hosts",
+  "description": "OA literature search (arXiv + OpenAlex), Evidence Ledger, journal palettes, plus research-flow skill for Tianshu and MCP hosts",
   "type": "module",
   "main": "index.js",
   "bin": {
@@ -21,6 +21,7 @@
     "research",
     "arxiv",
     "openalex",
+    "evidence-ledger",
     "journal-palette",
     "color-palette"
   ],
@@ -33,9 +34,21 @@
   "tianshu": {
     "name": "tianshu-research",
     "version": "0.1.0",
-    "description": "Click-to-install OA paper search (arXiv/OpenAlex), journal palettes, plus a short screening skill. Not an auto-paper writer.",
+    "description": "Click-to-install OA paper search (arXiv/OpenAlex), Evidence Ledger, journal palettes, plus research screening skill. Not an auto-paper writer.",
     "entry": "index.js",
     "tools": [
+      {
+        "name": "research_status",
+        "description": "Inspect research workspace status, evidence ledger statistics, search engine readiness, and journal figure palettes."
+      },
+      {
+        "name": "research_query",
+        "description": "Unified scholarly query gateway for paper search and metadata resolution across arXiv and OpenAlex."
+      },
+      {
+        "name": "research_evidence",
+        "description": "Structured scientific evidence ledger gateway. Manage sources, exact-locator evidence, and claims in the research workspace."
+      },
       {
         "name": "paper_search",
         "description": "Search arXiv and OpenAlex for OA papers"
@@ -52,8 +65,12 @@
     "skills": [
       "skills/research-flow"
     ],
+    "commands": [
+      "commands"
+    ],
     "permissions": {
-      "net": true
+      "net": true,
+      "fs": true
     }
   }
 }

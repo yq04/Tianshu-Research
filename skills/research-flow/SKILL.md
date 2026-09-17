@@ -13,11 +13,11 @@ triggers: [论文, 文献, arxiv, OpenAlex, 检索文献, 查论文, DOI, paper 
 
 推荐使用 MCP 点装。注意：MCP 启用亦写入全局用户配置，在下一次请求时改变工具指纹；完成科研任务后可通过 `/mcp disable tianshu-research` 或桌面设置停用。
 
-工具名是 `mcp__tianshu-research__paper_search` / `mcp__tianshu-research__paper_lookup` / `mcp__tianshu-research__journal_palette`。这是 **OA 初筛 + 读摘要 + 顶刊图色板**，不是一键全文翻译/投稿套件。
+工具集包含收敛网关（`research_query` / `research_evidence` / `research_status`）及完全向后兼容的原子工具（`paper_search` / `paper_lookup` / `journal_palette`）。支持快捷斜杠指令 `/research` 与 `/research-status`。这是 **OA 初筛 + 证据账本 + 顶刊图色板**，不是一键全文翻译/投稿套件。
 
 交互习惯参考 [gpt_academic](https://github.com/binary-husky/gpt_academic)（GPL-3.0，只借鉴用法，不拷代码）：粘贴 arXiv 链接就查这一篇；先摘要后全文；润色只改用户给出的段落。
 
-读卡/证据边界参考 [nature-skills](https://github.com/Yuan1z0825/nature-skills)（Apache-2.0；不是 Nature 期刊官方）：材料不够就标「现有材料无法判断」，不要编页码、图号或未读过的实验。不要默认输出 16 节精读卡、组会 PPT、审稿模拟。需要那套完整读卡/多面板投稿图流程时让用户自己 `npx skills add Yuan1z0825/nature-skills`，不要把整包拷进本会话。本插件只吸收纪律 + 提供 journal_palette Python 色板。
+读卡/证据边界参考 [nature-skills](https://github.com/Yuan1z0825/nature-skills)（Apache-2.0；不是 Nature 期刊官方）：材料不够就标「现有材料无法判断」，不要编页码、图号或未读过的实验。证据落盘推荐使用 `research_evidence` 录入结构化账本（`sources.jsonl`、`evidence.jsonl`、`claims.jsonl`）。需要深度多 Agent 综述时参考 `references/team-templates.md` 调度 Harness `/team` 与 `/council`。
 
 ## 默认：短用
 

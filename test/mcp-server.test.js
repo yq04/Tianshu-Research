@@ -4,7 +4,7 @@ import { handleMcpMessage, MCP_TOOLS } from '../mcp-server.js'
 import { interpolateRgb, resolvePalette, runJournalPalette } from '../figure.js'
 
 describe('tianshu-research MCP stdio protocol', () => {
-  it('initialize + tools/list advertise paper_search, paper_lookup, journal_palette', async () => {
+  it('initialize + tools/list advertise research gateway, ledger, search, and palettes', async () => {
     const init = await handleMcpMessage({
       jsonrpc: '2.0',
       id: 1,
@@ -17,8 +17,15 @@ describe('tianshu-research MCP stdio protocol', () => {
 
     const listed = await handleMcpMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list' })
     const names = listed.result.tools.map((t) => t.name)
-    assert.deepEqual(names.sort(), ['journal_palette', 'paper_lookup', 'paper_search'])
-    assert.equal(MCP_TOOLS.length, 3)
+    assert.deepEqual(names.sort(), [
+      'journal_palette',
+      'paper_lookup',
+      'paper_search',
+      'research_evidence',
+      'research_query',
+      'research_status',
+    ])
+    assert.equal(MCP_TOOLS.length, 6)
   })
 
   it('negotiates unsupported protocol version to 2024-11-05', async () => {
@@ -91,6 +98,17 @@ describe('tianshu-research MCP stdio protocol', () => {
     assert.match(res.result.content[0].text, /#F0027F/)
     assert.match(res.result.content[0].text, /journal_palette\(1\)/)
   })
+
+  it('tools/call research_status returns environment status', async () => {
+    const res = await handleMcpMessage({
+      jsonrpc: '2.0',
+      id: 6,
+      method: 'tools/call',
+      params: { name: 'research_status', arguments: {} },
+    })
+    assert.equal(res.result.isError, false)
+    assert.match(res.result.content[0].text, /天枢科研运行状态/)
+  })
 })
 
 describe('journal_palette palettes', () => {
@@ -150,6 +168,3 @@ describe('journal_palette palettes', () => {
     assert.match(res.content, /MATLAB: % Hex array:/)
   })
 })
-
-
-

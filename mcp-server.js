@@ -9,19 +9,43 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { runJournalPalette } from './figure.js'
 import { runPaperLookup, runPaperSearch } from './search.js'
+import { runResearchStatus } from './tools/research-status.js'
+import { runResearchQuery } from './gateway-query.js'
+import { runResearchEvidence } from './gateway-evidence.js'
 import {
   JOURNAL_PALETTE_SCHEMA,
   PAPER_LOOKUP_SCHEMA,
   PAPER_SEARCH_SCHEMA,
+  RESEARCH_STATUS_SCHEMA,
+  RESEARCH_QUERY_SCHEMA,
+  RESEARCH_EVIDENCE_SCHEMA,
   TOOL_DESCRIPTIONS,
   validateJournalPaletteParams,
   validatePaperLookupParams,
   validatePaperSearchParams,
+  validateResearchStatusParams,
+  validateResearchQueryParams,
+  validateResearchEvidenceParams,
 } from './tool-contracts.js'
 
 const PROTOCOL = '2024-11-05'
 
 export const MCP_TOOLS = [
+  {
+    name: 'research_status',
+    description: TOOL_DESCRIPTIONS.research_status,
+    inputSchema: RESEARCH_STATUS_SCHEMA,
+  },
+  {
+    name: 'research_query',
+    description: TOOL_DESCRIPTIONS.research_query,
+    inputSchema: RESEARCH_QUERY_SCHEMA,
+  },
+  {
+    name: 'research_evidence',
+    description: TOOL_DESCRIPTIONS.research_evidence,
+    inputSchema: RESEARCH_EVIDENCE_SCHEMA,
+  },
   {
     name: 'paper_search',
     description: TOOL_DESCRIPTIONS.paper_search,
@@ -95,7 +119,7 @@ export async function handleMcpMessage(msg) {
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: 'tianshu-research', version: '0.1.0' },
         instructions:
-          'OA literature screening (arXiv / OpenAlex) plus journal figure palettes. Use paper_search or paper_lookup for papers; journal_palette for hex colors. Wait for the user to pick a paper. Do not write a paper. Do not use web_search as a scholarly library.',
+          'OA literature screening (arXiv / OpenAlex), Evidence Ledger, and journal figure palettes. Use research_query or research_evidence for research tasks; journal_palette for hex colors. Wait for the user to pick a paper. Do not write a paper. Do not use web_search as a scholarly library.',
       })
     }
     if (method === 'ping') return ok(effectiveId, {})
@@ -104,6 +128,27 @@ export async function handleMcpMessage(msg) {
       const name = msg.params?.name
       const rawArgs = msg.params ? (msg.params.arguments === undefined ? {} : msg.params.arguments) : {}
 
+      if (name === 'research_status') {
+        const validated = validateResearchStatusParams(rawArgs)
+        if (!validated.ok) {
+          return fail(effectiveId, -32602, validated.error)
+        }
+        return ok(effectiveId, asText(runResearchStatus(validated.value)))
+      }
+      if (name === 'research_query') {
+        const validated = validateResearchQueryParams(rawArgs)
+        if (!validated.ok) {
+          return fail(effectiveId, -32602, validated.error)
+        }
+        return ok(effectiveId, asText(await runResearchQuery(validated.value)))
+      }
+      if (name === 'research_evidence') {
+        const validated = validateResearchEvidenceParams(rawArgs)
+        if (!validated.ok) {
+          return fail(effectiveId, -32602, validated.error)
+        }
+        return ok(effectiveId, asText(await runResearchEvidence(validated.value)))
+      }
       if (name === 'paper_search') {
         const validated = validatePaperSearchParams(rawArgs)
         if (!validated.ok) {
@@ -125,9 +170,9 @@ export async function handleMcpMessage(msg) {
         }
         return ok(effectiveId, asText(runJournalPalette(validated.value)))
       }
-      return fail(effectiveId, -32601, `Unknown tool: ${String(name)}`)
+      return fail(effectiveId, -32601, 'Unknown tool: ' + String(name))
     }
-    return fail(effectiveId, -32601, `Method not found: ${String(method)}`)
+    return fail(effectiveId, -32601, 'Method not found: ' + String(method))
   } catch (err) {
     return fail(effectiveId, -32603, err instanceof Error ? err.message : String(err))
   }
@@ -142,14 +187,14 @@ function startStdio() {
     try {
       msg = JSON.parse(trimmed)
     } catch (err) {
-      process.stderr.write(`tianshu-research MCP: bad JSON: ${err instanceof Error ? err.message : String(err)}\n`)
-      process.stdout.write(`${JSON.stringify(fail(null, -32700, 'Parse error: Invalid JSON'))}\n`)
+      process.stderr.write('tianshu-research MCP: bad JSON: ' + (err instanceof Error ? err.message : String(err)) + '\n')
+      process.stdout.write(JSON.stringify(fail(null, -32700, 'Parse error: Invalid JSON')) + '\n')
       return
     }
     Promise.resolve(handleMcpMessage(msg)).then((res) => {
-      if (res) process.stdout.write(`${JSON.stringify(res)}\n`)
+      if (res) process.stdout.write(JSON.stringify(res) + '\n')
     }).catch((err) => {
-      process.stderr.write(`tianshu-research MCP: ${err instanceof Error ? err.message : String(err)}\n`)
+      process.stderr.write('tianshu-research MCP: ' + (err instanceof Error ? err.message : String(err)) + '\n')
     })
   })
 }
@@ -157,4 +202,3 @@ function startStdio() {
 const invokedDirectly = Boolean(process.argv[1])
   && pathToFileURL(resolve(process.argv[1])).href === import.meta.url
 if (invokedDirectly) startStdio()
-
