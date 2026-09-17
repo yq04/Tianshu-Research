@@ -1,0 +1,59 @@
+{
+  "name": "tianshu-research",
+  "version": "0.1.0",
+  "description": "OA literature search (arXiv + OpenAlex) plus journal palettes and a short research-flow skill for Tianshu and MCP hosts",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "tianshu-research-mcp": "./mcp-server.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:python": "python -B -m unittest discover -s test -p test_thebestcolor.py"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yq04/Tianshu-Research.git"
+  },
+  "keywords": [
+    "tianshu",
+    "mcp",
+    "research",
+    "arxiv",
+    "openalex",
+    "thebestcolor",
+    "color-palette"
+  ],
+  "author": "yq04",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/yq04/Tianshu-Research/issues"
+  },
+  "homepage": "https://github.com/yq04/Tianshu-Research#readme",
+  "tianshu": {
+    "name": "tianshu-research",
+    "version": "0.1.0",
+    "description": "Click-to-install OA paper search (arXiv/OpenAlex), journal palettes, plus a short screening skill. Not an auto-paper writer.",
+    "entry": "index.js",
+    "tools": [
+      {
+        "name": "paper_search",
+        "description": "Search arXiv and OpenAlex for OA papers"
+      },
+      {
+        "name": "paper_lookup",
+        "description": "Look up one paper by arXiv id or DOI"
+      },
+      {
+        "name": "journal_palette",
+        "description": "Journal figure hex palettes (TheBestColor rewritten for Python)"
+      }
+    ],
+    "skills": [
+      "skills/research-flow"
+    ],
+    "permissions": {
+      "net": true
+    }
+  }
+}
