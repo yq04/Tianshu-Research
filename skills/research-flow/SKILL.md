@@ -25,6 +25,7 @@ triggers: [论文, 文献, arxiv, OpenAlex, 检索文献, 查论文, DOI, paper 
 2. 用户丢来 **arXiv 链接 / id / DOI** → `paper_lookup` / `mcp__tianshu-research__paper_lookup`。
 3. 表格或卡片给出题名 / 年 / DOI / 是否有 OA PDF。**等人选**再展开。不要一口气「综述十篇」。
 4. 用户要中文解读：只根据**手头材料**写 **问题 / 方法 / 结果 / 局限** 四行。只有摘要就写明「未读全文」；缺图/表/实验就写「现有材料无法判断」，不要补造。
+   - 详细精读卡模板见 `references/reading-card.md`。
 5. 结束。不要写笔记、remember、Zotero，除非用户明确说「记住 / 入库」。
 
 ## 读 PDF（用户要精读时）
@@ -48,6 +49,7 @@ triggers: [论文, 文献, arxiv, OpenAlex, 检索文献, 查论文, DOI, paper 
 - 只改给出的句子：语法、含混、重复。证据不足就标出来，不要补实验或结论。
 - 对照列出改动，保留领域术语与符号。
 - 禁止根据关键词直接写一篇可投稿论文。
+- 详细润色交付规范与不变量保护要求见 `references/polishing.md`。
 
 ## 长用（用户明确要求时）
 
