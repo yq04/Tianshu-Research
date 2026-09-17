@@ -1,134 +1,73 @@
+# Tianshu-Research 架构规划与综合开发计划书（完善定稿版）
+
+> **定位声明**：Tianshu-Research 绝非独立的科研 Agent 或臃肿的外部 MCP，而是深度依附于 Tianshu-Harness 的**第一方原生科研能力扩展包（Research Capability Layer）**。Harness 负责思考与编排（CVM、Memory、Prefix Cache、Team/Council），Research 负责科研方法、网关工具、证据账本与科学验收。
+> **核心原则**：**一套科研内核、两个交互表面；Harness 负责思考与编排，Research 负责测量、证据链和科学验收。**
+
+## 核心架构推演与共识决断
+
+### 1. 工具面：从离散平铺到 Gateway 收敛
+- **收敛为 4+1 网关工具**：`research_query`, `research_evidence`, `research_document`, `research_job`，以及可选的 `research_compute`。
+- **Schema 设计**：采用基于 `action` 字段的 `Discriminated Union` 设计（例如 `action: "search_papers" | "resolve_paper"`），并严格设置 `additionalProperties: false`。
+- **平滑过渡与向后兼容**：保留原子工具 `paper_search`、`paper_lookup`、`journal_palette` 100% 兼容。
+
+### 2. Evidence Ledger（证据账本）落盘设计
+- **数据解耦**：Harness 主记忆 `.rivet/knowledge/memory.jsonl` 只存高层结论与项目偏好。科研细节存入 `<project>/.rivet/research/` 目录。
+- **三层账本结构**：
+  - `sources.jsonl`：文献元数据（DOI, 标题, 作者, 年份, PDF 链接）。
+  - `evidence.jsonl`：Exact Locator（页码、章节、图号、公式号）和真实原文摘录。
+  - `claims.jsonl`：从证据中推导出的事实断言及其状态（Tentative, Verified, Superseded）。
+- **外键与防伪拦截**：严格校验证据必须挂载合法文献，断言必须绑定证据，杜绝凭空造假。
+
+### 3. 原生插件与 Slash Commands 装配
+- 在 `manifest.ts` / `package.json` 中声明：
+  - **Commands**: `/research` (主入口环境检查与意图识别), `/research-status` (状态快照)。
+  - **Tools**: 轻量级插件工具 `research_status`，快速获取工作区状态快照。
+  - **Hooks & Gates**: 科学门禁 `scientific-verifier.js`（引用完整性、定位覆盖率、占位符拦截）。
+
+### 4. 多 Agent 科研任务编排
+- **完全复用 Harness 编排器**：不重复造轮子，深度适配 Harness 原生 `/team`、`/council` 与 Worker 机制。
+- **WorkOrder 规范**：
+  - **Scout / Searcher**：使用 `research_query` 初筛文献与 OA PDF。
+  - **Reader / Extractor**：使用 `research_query` 读文献，用 `research_evidence` 提取记录带精确 Locator 的证据。
+  - **Synthesizer**：基于 Claim Ledger 生成交叉综合综述。
+  - **Council Reviewer**：通过 Scientific Gate 审计整套账本完整性。
+
+### 5. 深度思考与方案甄别：批判性对比《Tianshu-Research 开发计划书》原始草案
+1. **仓库工程形态：模块化单体 (Modular ESM) 优于 复杂 Monorepo**
+   - 天枢插件采用纯 Node.js ESM 规范免编译执行。维持模块化单体（`ledger/`、`gates/`、`tools/`、`figure/`、`skills/`）实现零外部构建依赖，秒级启动与单测。
+2. **交互入口设计：收敛双指令 (`/research` + `/research-status`) 优于 指令泛滥**
+   - 避免注册 7 个冗余指令污染天枢命令面板。保留 `/research [topic]` 与 `/research-status`，具体意图由 Skill 自然流转。
+3. **学术检索选型：开放获取优先 (arXiv + OpenAlex) 优于 强依赖商业/限流接口**
+   - 首发版本坚守开放获取优先（OA-First），首选 arXiv（Atom XML）与 OpenAlex（2.5亿+ 免 Key 开放学术元数据），保证新手“点装即用”，零门槛零配置。
+4. **领域知识解耦：通用理工核心 (General STEM Core) 优于 强绑定力学领域**
+   - 核心层提供通用理工规范；固体力学等领域知识作为首个可选外围专业技能包叠加，不侵入核心工具与数据账本定义。
+5. **天枢主干契约：即刻零侵入运行 优于 依赖未合并的 upstream PR**
+   - 确保在今天未改动内核的天枢运行时上 100% 稳定运行，通过参数透传与工作区自动推断（`process.cwd()` / 显式入参）实现多工作区隔离。
+
 ---
-title: Tianshu-Research 计划方案（点一下安装）
-type: research
-status: active-overlay
-date: 2026-09-16
-tags: [tianshu-research, plan, mcp-presets, plugin-presets]
----
 
-# Tianshu-Research 计划方案
+## 分阶段实施路线与进展
 
-> 新手不该跑脚本。科研能力挂到天枢**已经有的市场卡片**上：点启用/安装，然后直接用。不改 AgentLoop，不把 20 个学术 API 写进内核。
-> 注意事项：MCP 预设启用写入用户全局配置，停用时在下次请求边界刷新；桌面端呈现新预设卡片需运行本 fork 的 sidecar 二进制。
+### Phase 1: 骨架搭建与 Gateway 收敛 (M0 - M1) [已完成 ✅]
+- 实现 Discriminated Union 架构的 `research_query`、`research_evidence`、`research_status`。
+- 保持 `paper_search`、`paper_lookup`、`journal_palette` 完全向后兼容。
+- 交付物：`tool-contracts.js`、`gateway-query.js`、`tools/research-status.js`、`/research`、`/research-status`。
 
-## 判断
+### Phase 2: Evidence Ledger 落地与状态机约束 (M2 - M3) [已完成 ✅]
+- 实现三层结构化账本存储（`sources.jsonl`、`evidence.jsonl`、`claims.jsonl`）。
+- 落地严格的外键约束与防篡改机制。
+- 交付物：`ledger/evidence-ledger.js`、`gateway-evidence.js`、`test/ledger.test.js`。
 
-安装脚本、手动拷 `~/.agents/skills`、每个课题仓放 `.rivet.md`，对新手都太重。
+### Phase 3: 多 Agent 工作流与 Scientific Gate 闭环 (M4 - M6) [已完成 ✅]
+- 落地 `gates/scientific-verifier.js`：实现引用闭环、物理定位覆盖率（Locator Coverage Rate）、占位符拦截的自动化审计与 Markdown 报告输出。
+- 编制规范化的 Scout -> Reader -> Synthesizer -> Council Reviewer 分波工单模版（`skills/research-flow/references/team-templates.md`）。
+- 验证指标：42 项 Node 单测 + 6 项 Python 单测 + 10 项暂存隔离门禁全部绿色通过，GitHub 远端同步完毕。
 
-天枢桌面端已经有点装通道（sidecar 目录，桌面按返回的列表画卡片）：
+### Phase 4: 渐进式 Python 科学计算降级 (`research_compute`) (M5) [进行中 🚀]
+- Node 端轻量量纲匹配与数值容差对比兜底；
+- 探测本地 Python 环境中的科学库（SymPy, SciPy, NumPy）；
+- 未安装环境时返回 `available: false` 与降级说明，主流程不中断。
 
-| 通道 | 现成点击 | 科研缺什么 |
-|------|----------|------------|
-| MCP | Settings 预设市场。`GET /mcp/presets` → 点启用 → `POST /mcp/servers`。`tianshu-mcp` 就是「默认关闭，点了才拉进程」 | 目录里没有学术检索 |
-| 插件 | 同款市场。office-pdf 一点就装，**还能捆绑 Skill** | 没有科研插件 |
-| Skill | 只能开关已经加载的，或从本机 `.claude/skills` 导入 | **没有远程预设市场** |
-
-所以不是再发明发行器，而是 **往现成市场加条目**；Skill 远程点装是缺的接口，可后做。
-
-本公开仓没有 `desktop/`（闭源）。预设数组在 sidecar，桌面是按 API 渲染的——加一条 MCP/插件预设，现有设置页应多一张卡，不必先改桌面。VS Code 插件这边几乎没有 MCP 市场 UI，点装目前以桌面端为准。
-
-## 新手路径（目标）
-
-设置 → MCP（或插件）→「学术文献」→ 启用 → 新开对话说「找几篇 … 的论文」。
-
-不要：uv、git clone skill、Zotero、Obsidian、课题脚手架。那些全是可选项。
-
-## 往 Harness 加什么（接口，不是科研内核）
-
-### 1. 第一刀：MCP 预设（最小，复用现成按钮）
-
-在 `src/mcp/presets.ts` 加一条，形态对齐 `tianshu-mcp`：
-
-- `id: paper-search`，`category: knowledge`，**默认不写入 config**
-- `command: npx`，`args: ['-y', '@smithery/cli', 'run', '@openags/paper-search-mcp']`（无本机 Python；若 Smithery 开始要账号，卡片 help 写明，或改 `uvx paper-search-mcp`）
-- `author` / `repoUrl` 指向 [openags/paper-search-mcp](https://github.com/openags/paper-search-mcp)
-- 文案写清：点启用后工具变多，**本会话前缀会重建一次**；不是系统综述工具
-
-可选第二条 `zotero`：`command: zotero-mcp` 或 `uvx`，env `ZOTERO_LOCAL=true`。help：**先打开 Zotero，并勾选允许本机应用通信**。做不到「纯点击、零本机软件」。短用不必装这一条。
-
-测试：沿用 `src/server/__tests__/mcp-presets.test.ts` 的「列出预设不写配置、只有 POST 才进 configuredIds」。
-
-### 2. 更好的一键：插件预设（对标 office-pdf）
-
-MCP 卡片能搜，但没有「怎么搜、等人选、别用 web_search」的引导。office-pdf 已经证明：**插件 = 工具 + 捆绑 Skill，市场一点即装。**
-
-`plugins/tianshu-research` + `PLUGIN_PRESETS` 一条：
-
-- 捆绑 `research-flow` Skill（短用默认：出候选表；用户没说入库就不写 Zotero/笔记）
-- 工具尽量少（插件 ABI 至少要 1 个 tool）：不要复制 20 个源。要么薄封装 arXiv/OpenAlex HTTP，要么标明「请同时启用 paper-search MCP」
-- `permissions: { net: true }`
-- 默认不装，点「安装」才进 `~/.rivet/plugins/`
-
-这是给天枢用户的主路径。不向内核加 `arxiv` 常驻工具。
-
-### 3. 后置：Skill 预设市场（他们要的通用接口）
-
-现在 Skill 不能像 MCP 那样点装远程包。若要「任意科研/写作 Skill 一点就来」，再补：
-
-- `src/skills/skill-presets.ts`（静态目录，科研只是其中一行）
-- `GET /skills/presets`、`POST /skills/presets/:id/install` → 写入 `~/.rivet/skills/`
-- 桌面/VS Code 才需要新卡片（sidecar 可先合）
-
-没有这一层之前，引导 Skill 靠插件捆绑（第 2 步），不要让新手拷文件。
-
-## 明确不做
-
-- 安装脚本当主发行（可留在独立仓给 Cursor/Codex）
-- 改 AgentLoop、默认打开 MCP、把学术检索塞进 CORE_TOOLS
-- 短用强制 Zotero/Obsidian
-- 为凑 ABI 造一个假 tool 却不检索
-- 夸大：点装之后也不会自动写论文；付费 PDF / 公式精读仍然弱
-
-## 效果与代价（诚实）
-
-- 点装 MCP：新手能搜 OA 文献。工具一多，前缀缓存会碎一次，之后每轮 MCP schema 都占上下文（Zotero 默认约 38 个工具、约 1.3 万 token——所以 Zotero **不要**默认点开）。
-- 点装插件：有引导 Skill，短用更稳。
-- Zotero/Obsidian：永远有本机软件门槛，卡片只能写说明，不能替用户点。
-
-## 实施顺序
-
-1. ~~Harness：`paper-search` MCP 预设 + 测试。~~ 已加，默认关。
-2. ~~Harness：`plugins/tianshu-research`（Skill + 最少工具）+ 插件预设。~~ 已加。
-3. ~~桌面点装入口是 **MCP 服务**：`tianshu-research` 第一方卡片。~~ 已加。TUI `/mcp market` / `/mcp enable tianshu-research`。插件市场条目仍在，但**不要当默认路径**：`~/.rivet/plugins` 是用户全局的，会进每个编码会话。
-4. 需要时再做 Skill 远程市场（通用接口），科研只当目录条目。
-
-隔离约束（硬）：科研不得进入 `createDefaultToolRegistry`、不得写入 `DEFAULT_CONFIG.mcp.servers`、不得进 `runtime-assets/bundled-skills`、不得进 `PLUGIN_TOOL_SUPPRESS_MAP`。门禁：`src/mcp/__tests__/research-isolation.test.ts`。
-
-独立仓的 `install.ps1` 降为给非天枢 Agent 的旁路，不再当主故事。
-
-## gpt_academic 对照（只借鉴交互，不搬仓库）
-
-[binary-husky/gpt_academic](https://github.com/binary-husky/gpt_academic)（约 7 万星，**GPL-3.0**）是独立 Gradio 科研 GUI：快捷按钮、Arxiv 粘贴即译摘要、PDF/LaTeX 全文翻译、谷歌学术 related work、润色校对。
-
-不能并进 Apache-2.0 的天枢：许可证不允许拷 `crazy_functions`；也不该再做一个 GUI 套件。
-
-已吸收、且保持轻量：
-
-- 粘贴 `arxiv.org/abs|pdf` 或 DOI → 当单篇 lookup，不当关键词搜
-- 先摘要卡片，中文解读限「问题/方法/结果/局限」四行并声明未读全文
-- 润色只改用户贴的段落，对照改动
-
-明确不搬：PDF 全文翻译、谷歌学术 related work、LaTeX Grammarly、语音、虚空终端调度。那些效果一般，且会把插件做成第二个 gpt_academic。
-
-## nature-skills 对照（Apache-2.0，不整包入库）
-
-[Yuan1z0825/nature-skills](https://github.com/Yuan1z0825/nature-skills) 是一套 Nature 风格写作/读卡/绘图 Skill（paper-card、polishing、writing、figure、academic-search 等），许可证可复用。不整包塞进天枢：技能数建议上限 5，且大量依赖 Python 脚本与 `nature-shared`。
-
-已吸收进 `research-flow` 的纪律（不拷 SKILL.md）：
-
-- 材料不够就标「现有材料无法判断」，不编页码/图号
-- 润色先声明语言和段落角色；默认 generic，不冒充 Nature 官方规范
-- 短用不输出 16 节精读卡 / 组会 PPT / 审稿模拟
-
-完整包留给用户按需：`npx skills add Yuan1z0825/nature-skills`。
-
-## TheBestColor 配色（MATLAB → Python，opt-in）
-
-根目录 MATLAB 包 `Matlab顶刊配色包TheBestColor.rar`（阿昆的科研日常）核是编译后的 `.p`，不进仓库运行时。cheatsheet 上 100 套离散色已重建为 `plugins/tianshu-research/figure/thebestcolor.json`，API 对齐 `TheBestColor('akun', id)` / `'map', 256`。
-
-- MCP 工具 `journal_palette`（默认关，随「科研文献」点装）。空参数只返回 role/alias，不把 100 套色倒进上下文。
-- Python：`figure/thebestcolor.py`（`thebestcolor(16)`、`apply_journal_style()` 对齐 nature-figure 的 Arial + `svg.fonttype=none`）。
-- 色盲安全用 Okabe–Ito（`role=colorblind`），不是该 MATLAB 包里的彩虹。
-- **不**进入 `createDefaultToolRegistry` / TUI `theme-palettes.ts` / bundled-skills。不整包拷 nature-figure。
-
-
+### Phase 5: 结构化文献解析与异步任务 (`research_document` + `research_job`)
+- `research_job`：实现基于轻量文件事件流的任务状态机（`queued -> searching -> parsing -> completed`）；
+- `research_document`：本地提取结构化章节与文本片段，直链 OA PDF 保障溯源。
