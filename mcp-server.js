@@ -75,18 +75,17 @@ export async function handleMcpMessage(msg) {
 
   const method = msg.method
 
-  // Notifications
-  if (method.startsWith('notifications/') || method === 'initialized') {
-    return null
-  }
-
+  // Legitimate notifications (no id)
   if (isNotification) {
-    // Non-notification method missing id
     return null
   }
 
   if (!validId) {
     return fail(null, -32600, 'Invalid Request: id must be a string or number')
+  }
+
+  if (method.startsWith('notifications/') || method === 'initialized') {
+    return fail(effectiveId, -32600, 'Invalid Request: notification method must not include an id')
   }
 
   try {
@@ -103,24 +102,24 @@ export async function handleMcpMessage(msg) {
     if (method === 'tools/list') return ok(effectiveId, { tools: MCP_TOOLS })
     if (method === 'tools/call') {
       const name = msg.params?.name
-      const rawArgs = msg.params?.arguments
+      const rawArgs = msg.params ? (msg.params.arguments === undefined ? {} : msg.params.arguments) : {}
 
       if (name === 'paper_search') {
-        const validated = validatePaperSearchParams(rawArgs ?? {})
+        const validated = validatePaperSearchParams(rawArgs)
         if (!validated.ok) {
           return fail(effectiveId, -32602, validated.error)
         }
         return ok(effectiveId, asText(await runPaperSearch(validated.value)))
       }
       if (name === 'paper_lookup') {
-        const validated = validatePaperLookupParams(rawArgs ?? {})
+        const validated = validatePaperLookupParams(rawArgs)
         if (!validated.ok) {
           return fail(effectiveId, -32602, validated.error)
         }
         return ok(effectiveId, asText(await runPaperLookup(validated.value)))
       }
       if (name === 'journal_palette') {
-        const validated = validateJournalPaletteParams(rawArgs ?? {})
+        const validated = validateJournalPaletteParams(rawArgs)
         if (!validated.ok) {
           return fail(effectiveId, -32602, validated.error)
         }

@@ -34,6 +34,8 @@ describe('tianshu-research MCP stdio protocol', () => {
   it('ignores notifications and rejects unknown methods', async () => {
     assert.equal(await handleMcpMessage({ jsonrpc: '2.0', method: 'notifications/initialized' }), null)
     assert.equal(await handleMcpMessage({ jsonrpc: '2.0', method: 'initialized' }), null)
+    const notificationWithId = await handleMcpMessage({ jsonrpc: '2.0', id: 99, method: 'notifications/initialized' })
+    assert.equal(notificationWithId.error.code, -32600)
     const bad = await handleMcpMessage({ jsonrpc: '2.0', id: 3, method: 'nope' })
     assert.equal(bad.error.code, -32601)
   })
@@ -56,6 +58,25 @@ describe('tianshu-research MCP stdio protocol', () => {
     })
     assert.equal(res.error.code, -32602)
     assert.match(res.error.message, /query/)
+  })
+
+  it('tools/call rejects explicit null arguments and unknown properties', async () => {
+    const nullArgs = await handleMcpMessage({
+      jsonrpc: '2.0',
+      id: 40,
+      method: 'tools/call',
+      params: { name: 'paper_search', arguments: null },
+    })
+    assert.equal(nullArgs.error.code, -32602)
+
+    const unknownProp = await handleMcpMessage({
+      jsonrpc: '2.0',
+      id: 41,
+      method: 'tools/call',
+      params: { name: 'journal_palette', arguments: { id: 1, extraProp: 'bad' } },
+    })
+    assert.equal(unknownProp.error.code, -32602)
+    assert.match(unknownProp.error.message, /Unknown property: extraProp/)
   })
 
   it('tools/call journal_palette returns ColorBrewer Accent for id=1', async () => {
@@ -120,6 +141,13 @@ describe('journal_palette palettes', () => {
     const badN = runJournalPalette({ id: 1, n: 20 })
     assert.equal(badN.isError, true)
     assert.match(badN.content, /exceeds palette length/)
+  })
+
+  it('formats discrete with n using Python slice and clean MATLAB comment', () => {
+    const res = runJournalPalette({ id: 1, n: 4 })
+    assert.equal(res.isError, false)
+    assert.match(res.content, /journal_palette\(1\)\[:4\]/)
+    assert.match(res.content, /MATLAB: % Hex array:/)
   })
 })
 

@@ -94,10 +94,20 @@ export const TOOL_DESCRIPTIONS = {
     'Return hex colors for journal figures (100 curated publication palettes for Python). id 1–100, role, or ColorBrewer name. mode=discrete or map. Not a plotting pipeline; not TUI themes. Omit args to list recommended roles only.',
 }
 
+function checkUnknownProperties(raw, allowedKeys) {
+  const unknown = Object.keys(raw).filter((k) => !allowedKeys.includes(k))
+  if (unknown.length > 0) {
+    return `Unknown property: ${unknown.join(', ')}`
+  }
+  return null
+}
+
 export function validatePaperSearchParams(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return { ok: false, error: 'arguments must be an object' }
   }
+  const unk = checkUnknownProperties(raw, ['query', 'source', 'limit'])
+  if (unk) return { ok: false, error: unk }
   const query = raw.query
   if (typeof query !== 'string' || !query.trim()) {
     return { ok: false, error: 'query is required and must be a non-empty string' }
@@ -126,6 +136,8 @@ export function validatePaperLookupParams(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return { ok: false, error: 'arguments must be an object' }
   }
+  const unk = checkUnknownProperties(raw, ['id'])
+  if (unk) return { ok: false, error: unk }
   const id = raw.id
   if (typeof id !== 'string' || !id.trim()) {
     return { ok: false, error: 'id is required and must be a non-empty string' }
@@ -140,6 +152,8 @@ export function validateJournalPaletteParams(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     return { ok: false, error: 'arguments must be an object' }
   }
+  const unk = checkUnknownProperties(raw, ['id', 'role', 'name', 'mode', 'n'])
+  if (unk) return { ok: false, error: unk }
   let id
   if (raw.id !== undefined) {
     if (typeof raw.id !== 'number' || !Number.isInteger(raw.id) || raw.id < 1 || raw.id > 100) {

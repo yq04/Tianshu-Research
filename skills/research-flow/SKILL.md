@@ -38,8 +38,8 @@ triggers: [论文, 文献, arxiv, OpenAlex, 检索文献, 查论文, DOI, paper 
 100 套顶刊色板已改写为 journal_palette Python 模块，**不要**调用 MATLAB `.p`，也**不要**把这些颜色写进天枢 TUI 主题。
 
 1. 先问图类型：分类曲线 / 热图 / 发散 / 必须色盲安全。没说清就用 `journal_palette` 不带参数，只看推荐 role。
-2. 取色：`mcp__tianshu-research__journal_palette`（`role=categorical|heatmap|diverging|colorblind` 或 MATLAB 的 id 1–100）。色盲/灰度印刷用 `role=colorblind`（Okabe–Ito，不是该 MATLAB 包里的彩虹）。
-3. 画图脚本：把 `plugins/tianshu-research/figure/thebestcolor.py` 和 `thebestcolor.json` 一同拷到用户脚本旁。`journal_palette(16)` 对应 MATLAB `TheBestColor('akun',16)`；热图 `journal_palette(45, map_n=256)` 或 `66`（viridis）。`apply_journal_style()` 只设 Arial + `svg.fonttype='none'`，与 nature-figure 的强制字体规则对齐。
+2. 取色：`mcp__tianshu-research__journal_palette`（`role=categorical|heatmap|diverging|colorblind` 或色板 id 1–100）。色盲安全优先使用 `role=colorblind`（Okabe–Ito）；灰度印刷须配合不同线型（linestyle）或标记（marker）。
+3. 画图脚本：将 `journal_palette.py` 与 `journal_palette.json`（位于插件目录 `figure/` 或独立发行包内）复制到用户绘图脚本同级目录。直接使用工具返回的 hex 色值是最简路径；Python 脚本可调用 `colors = journal_palette(16)`；热图连续插值使用 `journal_palette(45, map_n=256)` 或 `66`（viridis）。`apply_journal_style()` 设置 Arial 矢量字体、精简坐标轴与图例规范。
 4. 不要编造数据或统计星号。完整多面板/投稿尺寸/source data 走 nature-figure，不是本工具。
 
 ## 润色（用户贴了段落时）

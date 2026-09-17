@@ -99,7 +99,7 @@ export function formatCatalog() {
     `roles: categorical→${data.roles.categorical}  colorblind→okabe_ito  sequential→${data.roles.sequential} (viridis)  diverging→${data.roles.diverging} (RdBu)  heatmap→${data.roles.heatmap} (Spectral)  nature_like→${data.roles.nature_like}`,
     `aliases: ${aliasLines}`,
     'Call journal_palette again with id, role, or name. mode=discrete (default) or map (n=256 interpolated).',
-    'Colorblind / grayscale print: use role=colorblind (Okabe–Ito), not a rainbow pack.',
+    'Colorblind safety: role=colorblind (Okabe–Ito). For grayscale reproduction, pair distinct line styles or markers.',
     'Full Nature-style figures: npx skills add Yuan1z0825/nature-skills (nature-figure). This tool only returns hex.',
   ].join('\n')
 }
@@ -122,14 +122,16 @@ export function resolvePalette(params = {}) {
   const hex = hexList(data, resolved.key)
   if (!hex || hex.length === 0) return { error: `palette ${resolved.key} missing` }
 
+  const totalLength = hex.length
+  const specifiedN = valid.n !== undefined
   const mode = valid.mode || 'discrete'
-  if (mode === 'discrete' && valid.n !== undefined && valid.n > hex.length) {
-    return { error: `discrete n (${valid.n}) exceeds palette length (${hex.length})` }
+  if (mode === 'discrete' && specifiedN && valid.n > totalLength) {
+    return { error: `discrete n (${valid.n}) exceeds palette length (${totalLength})` }
   }
 
   const n = mode === 'map'
-    ? (valid.n !== undefined ? valid.n : 256)
-    : (valid.n !== undefined ? valid.n : hex.length)
+    ? (specifiedN ? valid.n : 256)
+    : (specifiedN ? valid.n : totalLength)
   const colors = mode === 'map' ? interpolateRgb(hex, n) : hex.slice(0, n)
   return {
     id: resolved.key,
@@ -137,23 +139,29 @@ export function resolvePalette(params = {}) {
     mode,
     n: colors.length,
     hex: colors,
+    totalLength,
+    specifiedN,
   }
 }
 
 export function formatPalette(result) {
   if (result.catalog) return result.text
-  const matlab = result.id === 'okabe_ito'
-    ? '(Okabe–Ito; not in the MATLAB pack)'
-    : `MATLAB: C = journal_palette( ${result.id}${result.mode === 'map' ? `, 'map', ${result.n}` : ''});`
-  const py = result.id === 'okabe_ito'
-    ? (result.mode === 'map' ? `Python: journal_palette('okabe_ito', map_n=${result.n})` : "Python: journal_palette('okabe_ito')")
-    : `Python: journal_palette(${result.id}${result.mode === 'map' ? `, map_n=${result.n}` : ''})`
+  const matlab = `MATLAB: % Hex array: {${result.hex.map((h) => `'${h}'`).join(', ')}}`
+  let py
+  const keyStr = result.id === 'okabe_ito' ? "'okabe_ito'" : String(result.id)
+  if (result.mode === 'map') {
+    py = `Python: colors = journal_palette(${keyStr}, map_n=${result.n})`
+  } else if (result.specifiedN && result.n < (result.totalLength ?? 999)) {
+    py = `Python: colors = journal_palette(${keyStr})[:${result.n}]`
+  } else {
+    py = `Python: colors = journal_palette(${keyStr})`
+  }
   return [
     `journal_palette ${result.id} (${result.via}, ${result.mode} n=${result.n})`,
     result.hex.join(' '),
     matlab,
     py,
-    'Copy plugins/tianshu-research/figure/journal_palette.py and journal_palette.json next to the plotting script. Arial + svg.fonttype=none. Do not invent data. Do not apply these colors to the Tianshu TUI.',
+    'Copy journal_palette.py and journal_palette.json next to the plotting script. apply_journal_style() sets Arial + vector fonts. For grayscale print/colorblind safety, use role=colorblind (Okabe–Ito) combined with linestyles/markers. Do not apply these colors to the Tianshu TUI.',
   ].join('\n')
 }
 
