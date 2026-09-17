@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-JSON--RPC_2.0-green.svg)](https://modelcontextprotocol.io/)
 
-天枢理工科研叠加层（**Tianshu-Research Overlay**）。专为天枢（Rivet）终端编程智能体打造的可选扩展套件，也可作为标准 MCP 服务在 Claude Desktop、Cursor、Codex 等主流智能体环境中使用。
+天枢理工科研扩展包（**Tianshu-Research Overlay**）。Tianshu-Research 并非独立的科研智能体，亦非孤立的外部工具服务，而是依附于 Tianshu-Harness 的**原生科研能力扩展包**。Tianshu-Harness 始终是唯一的认知中枢、会话中枢和多智能体编排器。
 
 提供开放获取文献检索（arXiv / OpenAlex）、单篇精读解析与顶刊绘图配色能力。
 
