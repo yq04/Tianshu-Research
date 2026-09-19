@@ -1,6 +1,6 @@
 # HANDOFF — Tianshu-Research (天枢理工科研能力扩展包)
 
-> **给完全没有本会话上下文的新 Agent 或开发者**：动手前请完整精读本文。本阶段已彻底完成针对「跨项目 MCP 行为污染与前缀缓存破坏」以及「固化工作流脱离理工科研实际」两大结构性缺陷的全面架构重构与持续演进（Phase 1 至 Phase 7，Phase 8 插件侧，Phase 9A/9B，Phase 11 能力基准，Phase 12 发布准备）。当前插件与独立仓库全部 **337 项 Node.js 单测与 14 项 Python 测试 100% 绿灯通过（Exit 0）**，版本 0.2.0 候选就绪，代码已全量同步。
+> **给完全没有本会话上下文的新 Agent 或开发者**：动手前请完整精读本文。本阶段已彻底完成针对「跨项目 MCP 行为污染与前缀缓存破坏」以及「固化工作流脱离理工科研实际」两大结构性缺陷的全面架构重构与持续演进（Phase 1 至 Phase 7，Phase 8 插件侧，Phase 9A/9B，Phase 11 能力基准，Phase 12 发布准备，Phase 10 CPU 核心）。当前插件与独立仓库全部 **352 项 Node.js 单测与 14 项 Python 测试 100% 绿灯通过（Exit 0）**，0.2.0 已发布（GitHub tag），代码已全量同步。
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## 二、已经完成了什么（交付清单）
 
-全量 **337 项 Node.js 单元测试与 14 项 Python 测试 100% 绿灯（Exit 0）**，以下核心成果已全量同步至双仓库：
+全量 **352 项 Node.js 单元测试与 14 项 Python 测试 100% 绿灯（Exit 0）**，以下核心成果已全量同步至双仓库：
 
 ### 1. Phase 1：契约固化、Scope 守卫与量纲物理漏洞修复
 - **作用域与调用守卫**（`scope/workspace-scope.js`、`scope/invocation-guard.js`）：实现可信根目录解析；补齐缺失字段；严格拦截非科研项目越界写入与执行。
@@ -127,11 +127,20 @@
 - **候选版验收**：parity 零漂移（177 文件 identical）；双仓完整 suite 各跑一次（337 Node + 14 Python 全绿）。
 - **新增测试**：`test/release-parity.test.js`（7 项：同树 parity、篡改检测、白名单外 fail-closed、白名单内单独上报、网关面漂移拒绝、版本不一致拒绝、快照诚实性）。
 
+### 13. Phase 10（CPU 核心）：后端契约、本地后端、资源策略与断线对账
+- **后端契约**（`jobs/backends/interface.js`）：统一 submit/query/cancel/reconcile 契约 + `guardBackend` 通用防线——跨租户访问一律 `CrossTenantRefusalError`（fail-closed）、未知 run 如实 `not_found`、提交幂等（同键不重复执行）；契约结构校验 `assertBackendContract`。
+- **本地后端**（`jobs/backends/local-process.js`，supported）：复用现有确定性执行器（安全 spawn、settle-once、真进程树终止、真实收据），提交即返回、幂等重放、查询/取消走真实 run-store。
+- **注册表纪律**（`jobs/backends/registry.js`）：`local-process` 标 supported（已被契约套件验证）；`torchrun-elastic` / `jax-multiproc` / `slurm-remote` 仅作声明、**supported: false** 并注明理由——未经真实硬件验收绝不声称支持。
+- **资源策略**（`jobs/resource-policy.js`）：fail-closed 准入——墙时/输出预算上限、可执行文件必须落在工作区内且真实存在、并发上限；违规即拒绝（PolicyViolationError 带码），绝不静默放宽。
+- **断线对账**（`jobs/reconcile.js`）：崩溃/断线后以后端为权威对账——已验证终态收据照实入库；后端无记录的任务标记 `orphaned`（诚实地报「从未验证完成」，绝不升级为 completed）；后端不可达时本地状态分毫不动；对账幂等；按工作区隔离。
+- **run-store 增强**：`getRun` 返回形状补齐 `error` 字段（对账的 orphaned 原因可被如实读取）。
+- **新增测试**：`test/backend-contract.test.js`（9 项：契约校验、跨租拒绝、not_found 诚实、幂等不重执行、本地真实收据、取消收据、注册表 support 纪律、资源策略全反例）、`test/remote-reconcile.test.js`（6 项：收据入库、orphaned 不伪造、不可达不动状态、活跃任务不动、幂等、租户隔离）。
+
 ---
 
 ## 三、当前卡在哪（Current Status & Blockers）
 
-**结论：Phase 1 至 Phase 12 全部插件侧工作封顶，0.2.0 已正式发布（GitHub tag 0.2.0），不存在任何代码、架构或单测阻塞！**
+**结论：Phase 1 至 Phase 12 插件侧工作全部封顶 + Phase 10 CPU 核心落地，0.2.0 已正式发布（GitHub tag 0.2.0），不存在任何代码、架构或单测阻塞！**
 
 - **代码与测试**：全部 **337 项 Node.js 单测与 14 项 Python 测试 100% 绿灯（Exit 0）**；parity 零漂移。
 - **双仓库状态**：宿主 `plugins/tianshu-research/` 与独立开源仓库 `D:\1_Research\Tianshu-Research` 代码与测试完全镜像同步。
@@ -147,9 +156,8 @@
    - 插件侧契约已就绪（`integration/context-projection.js` + `integration/review-contracts.js`），宿主侧落地 `src/agent/research/context-bridge.ts`、`work-order-adapter.ts`、`council-adapter.ts` 与 `src/agent/hooks/research-state-hook.ts` 消费上述投影与契约；
    - 将天枢的认知底座（Claims、Ledger、Pressure、Stigmergy）与科研事实存储进行单向投影（消费插件快照）；接入天机（反事实假设）、天府（结构与数据沿袭守护）、文曲（图文与结论表达）三大星域特质；
    - 接入 Council 多智能体独立同行评审机制：非科研 session 零 bridge/hook 注入；多数赞成不覆盖反例 gate；reader/reviewer 无写执行权。
-2. **Phase 10 — 长任务/GPU/远端 backend（P2，按实际课题增量）**：
-   - `jobs/backends/`（interface + local-process + torchrun/jax 二选一 + remote-runner）、`reconcile.js`、`jobs/resource-policy.js`；
-   - CPU fake backend 先行验证提交幂等/断网/取消/跨租户拒绝；真实 backend 验收按需增量。
+2. **Phase 10 收尾 — GPU/远端 backend 真实验收（CPU 契约层已落地）**：
+   - `torchrun-elastic` / `jax-multiproc` / `slurm-remote` 已声明为 unsupported 集成点；需真实多卡/SLURM 环境按 task_plan 验收清单（worker-group 重启、checkpoint resume、日志截断、产物拉取）逐项验证后方可翻 supported；
 3. **Phase 6C / 方案 B（天枢宿主内核 Scoped MCP 连接池集成）**：
    - 若授权修改宿主源码（`src/`），落地 `src/mcp/scoped-pool.ts` 与 `session-surface.ts`，在宿主桌面 Sidecar 层面实现会话级 MCP 连接池。
 4. **版本发布 ✅ 已完成（用户已授权）**：

@@ -138,6 +138,7 @@ export function getRun(workspace, runId) {
     startTime: meta?.startTime || receipt?.startTime,
     endTime: meta?.endTime || receipt?.endTime,
     exitCode: meta?.exitCode ?? receipt?.exitCode,
+    error: meta?.error ?? receipt?.error,
     artifacts: meta?.artifacts || receipt?.outputs || [],
     metrics: meta?.metrics || receipt?.metrics,
     createdAt: meta?.createdAt,
