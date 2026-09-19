@@ -1,14 +1,3 @@
-﻿node_modules/
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.pytest_cache/
-*.rar
-.DS_Store
-Thumbs.db
-*.log
-
-# Tianshu & Research local artifacts
 .rivet/
-.rivet-config.json

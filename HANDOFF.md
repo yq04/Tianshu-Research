@@ -131,7 +131,7 @@
 
 ## 三、当前卡在哪（Current Status & Blockers）
 
-**结论：Phase 1 至 Phase 12 全部插件侧工作封顶，0.2.0 候选版本就绪，不存在任何代码、架构或单测阻塞！**
+**结论：Phase 1 至 Phase 12 全部插件侧工作封顶，0.2.0 已正式发布（GitHub tag 0.2.0），不存在任何代码、架构或单测阻塞！**
 
 - **代码与测试**：全部 **337 项 Node.js 单测与 14 项 Python 测试 100% 绿灯（Exit 0）**；parity 零漂移。
 - **双仓库状态**：宿主 `plugins/tianshu-research/` 与独立开源仓库 `D:\1_Research\Tianshu-Research` 代码与测试完全镜像同步。
@@ -152,9 +152,9 @@
    - CPU fake backend 先行验证提交幂等/断网/取消/跨租户拒绝；真实 backend 验收按需增量。
 3. **Phase 6C / 方案 B（天枢宿主内核 Scoped MCP 连接池集成）**：
    - 若授权修改宿主源码（`src/`），落地 `src/mcp/scoped-pool.ts` 与 `session-surface.ts`，在宿主桌面 Sidecar 层面实现会话级 MCP 连接池。
-4. **版本发布（待用户授权执行）**：
-   - 0.2.0 候选已就绪（parity 零漂移 + 双仓全绿 + 迁移说明齐备）；
-   - 剩余动作：双仓 `git add -A && git commit`、独立仓打 `0.2.0` 标签并 push 到 GitHub——按 task_plan「发布/push 留给既有用户授权流程，不自动执行」的约定，等待用户明确授权后执行；
+4. **版本发布 ✅ 已完成（用户已授权）**：
+   - 独立开源仓已提交 `eeafc76`（156 文件，Phase 8/9A/9B/11/12 全量）并打标 **`0.2.0`**，`main` 与标签均已推送至 `https://github.com/yq04/Tianshu-Research`；
+   - 宿主仓以路径限定方式提交 `plugins/tianshu-research/` 与 `HANDOFF.md`（共享工作区纪律：未触碰其他会话文件，如 `docs/research/`）；
    - 真实宿主逐格验收（Cursor / Claude Desktop / VS Code / 天枢 sidecar）与真实 DeepSeek cache probe 未执行，`docs/host-compatibility.md` 中如实标注。
 
 ---
