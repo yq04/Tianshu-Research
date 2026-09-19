@@ -1,6 +1,6 @@
 # HANDOFF — Tianshu-Research (天枢理工科研能力扩展包)
 
-> **给完全没有本会话上下文的新 Agent 或开发者**：动手前请完整精读本文。本阶段已彻底完成针对「跨项目 MCP 行为污染与前缀缓存破坏」以及「固化工作流脱离理工科研实际」两大结构性缺陷的全面架构重构与持续演进（Phase 1 至 Phase 12 全部插件侧 + Phase 10 CPU 核心 + 真实线上冒烟）。当前插件与独立仓库全部 **354 项 Node.js 单测与 14 项 Python 测试 100% 绿灯通过（Exit 0）**，0.2.0 已发布（GitHub tag），代码已全量同步。
+> **给完全没有本会话上下文的新 Agent 或开发者**：动手前请完整精读本文。本阶段已彻底完成针对「跨项目 MCP 行为污染与前缀缓存破坏」以及「固化工作流脱离理工科研实际」两大结构性缺陷的全面架构重构与持续演进（Phase 1 至 Phase 12 全部插件侧 + Phase 10 CPU 核心 + 真实线上冒烟 + DeepSeek 缓存实测 + 异步运行操作化）。当前插件与独立仓库全部 **356 项 Node.js 单测与 14 项 Python 测试 100% 绿灯通过（Exit 0）**，0.2.0 已发布（GitHub tag），代码已全量同步。
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## 二、已经完成了什么（交付清单）
 
-全量 **354 项 Node.js 单元测试与 14 项 Python 测试 100% 绿灯（Exit 0）**，以下核心成果已全量同步至双仓库：
+全量 **356 项 Node.js 单元测试与 14 项 Python 测试 100% 绿灯（Exit 0）**，以下核心成果已全量同步至双仓库：
 
 ### 1. Phase 1：契约固化、Scope 守卫与量纲物理漏洞修复
 - **作用域与调用守卫**（`scope/workspace-scope.js`、`scope/invocation-guard.js`）：实现可信根目录解析；补齐缺失字段；严格拦截非科研项目越界写入与执行。
@@ -144,7 +144,7 @@
 
 ## 三、当前卡在哪（Current Status & Blockers）
 
-**结论：Phase 1 至 Phase 12 插件侧工作全部封顶 + Phase 10 CPU 核心落地，0.2.0 已正式发布（GitHub tag 0.2.0），不存在任何代码、架构或单测阻塞！**
+**结论：Phase 1 至 Phase 12 插件侧工作全部封顶 + Phase 10 CPU 核心落地 + 真实环境验证（线上冒烟 6/6、DeepSeek 缓存实测 95.1% 优秀档），0.2.0 已正式发布（GitHub tag 0.2.0），不存在任何代码、架构或单测阻塞！**
 
 - **代码与测试**：全部 **337 项 Node.js 单测与 14 项 Python 测试 100% 绿灯（Exit 0）**；parity 零漂移。
 - **双仓库状态**：宿主 `plugins/tianshu-research/` 与独立开源仓库 `D:\1_Research\Tianshu-Research` 代码与测试完全镜像同步。
@@ -167,7 +167,14 @@
 4. **版本发布 ✅ 已完成（用户已授权）**：
    - 独立开源仓已提交 `eeafc76`（156 文件，Phase 8/9A/9B/11/12 全量）并打标 **`0.2.0`**，`main` 与标签均已推送至 `https://github.com/yq04/Tianshu-Research`；
    - 宿主仓以路径限定方式提交 `plugins/tianshu-research/` 与 `HANDOFF.md`（共享工作区纪律：未触碰其他会话文件，如 `docs/research/`）；
-   - 真实宿主逐格验收（Cursor / Claude Desktop / VS Code / 天枢 sidecar）与真实 DeepSeek cache probe 未执行，`docs/host-compatibility.md` 中如实标注。
+   - 真实 DeepSeek cache probe ✅ 已执行（2026-09-19）：20 轮同前缀会话，收敛段命中率 95.1%（优秀档），前缀全部稳定，与 95–99% 宣称一致；证据见 `plugins/tianshu-research/docs/smoke.md` 第 4 节；
+   - 真实宿主逐格验收（Cursor / Claude Desktop / VS Code / 天枢 sidecar）未执行，`docs/host-compatibility.md` 中如实标注。
+
+### 15. 发布后完善 II：异步运行操作化（background-jobs 适配入口，插件侧闭环）
+- **`run.submit@1`**（`contracts/operations.js` + `operations/dispatcher.js`）：经 local-process 后端异步提交 RunSpec（fire-and-forget），同 idempotencyKey + 同 runId 幂等重放不重执行，同 key 异 runId 如实 `IDEMPOTENCY_CONFLICT` failed 结果；资源策略由工作区默认策略派生（**绝不接受调用方注入的策略**——那是策略注入漏洞）。与既有 `run.status@1` / `run.cancel@1` / `run.reconcile@1` 构成完整异步运行闭环。
+- **`run.reconcile@1`**：断线对账操作化——入库已验证收据、orphaned 如实上报（附 ORPHANED_RUNS warning issue）、不伪造完成。
+- **守卫职责收敛**（`jobs/backends/interface.js`）：`guardBackend` 只负责租户所有权与诚实性；幂等语义完全归属各后端自有持久状态（本地为进程级单例 `getLocalProcessBackend()`，远端本就在远端）。
+- 操作目录扩至 **25 个操作 ID**，四网关顶级工具面不变。
 
 ---
 

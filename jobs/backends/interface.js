@@ -15,7 +15,8 @@
  *
  * Hard invariants:
  *  - Submit idempotency: the same (tenant, idempotencyKey) MUST return the
- *    same backendRunId and MUST NOT re-execute.
+ *    same backendRunId and MUST NOT re-execute (enforced by each backend's
+ *    durable state; the guard does not duplicate it).
  *  - Tenant isolation: a tenant may only see/cancel its own runs. Any access
  *    across tenants raises CrossTenantRefusalError — fail-closed.
  *  - Honesty: unknown runIds report { status: 'not_found' }; disconnected
@@ -110,16 +111,13 @@ export function guardBackend(backend) {
 
     async submit({ tenant, spec, idempotencyKey }) {
       if (!tenant) throw new BackendError('submit requires a tenant', { code: 'CONTRACT_VIOLATION' });
-      const key = `${tenant}::${idempotencyKey ?? spec?.runId ?? ''}`;
-      const prior = owned.get(key) !== undefined ? backend.__idempotentLookup?.(key) : undefined;
-      if (prior) return prior; // idempotent replay: no re-execution
+      // Idempotency semantics belong to the backend (it owns the durable
+      // state); the guard only records ownership for tenant isolation.
       const result = await backend.submit({ tenant, spec, idempotencyKey });
       if (!result?.backendRunId) {
         throw new BackendError(`backend "${backend.name}" submit returned no backendRunId`, { code: 'CONTRACT_VIOLATION' });
       }
       owned.set(result.backendRunId, tenant);
-      owned.set(key, tenant);
-      backend.__rememberIdempotent?.(key, result);
       return result;
     },
 

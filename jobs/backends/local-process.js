@@ -114,3 +114,15 @@ export function createLocalProcessBackend() {
     },
   };
 }
+
+/**
+ * Process-wide singleton: the local backend's idempotency ledger must live
+ * longer than a single dispatch call, otherwise the same key would
+ * re-execute. Remote backends hold this state on the remote side.
+ */
+let singleton = null;
+
+export function getLocalProcessBackend() {
+  if (!singleton) singleton = createLocalProcessBackend();
+  return singleton;
+}

@@ -635,6 +635,79 @@ export const OPERATION_DESCRIPTORS = Object.freeze({
     },
   }),
 
+  'run.submit@1': Object.freeze({
+    id: 'run.submit@1',
+    capability: 'run',
+    summary: 'Submit a RunSpec asynchronously to the local-process backend (fire-and-forget; query via run.status@1).',
+    effects: Object.freeze(['read', 'execute', 'write']),
+    dependencies: Object.freeze([]),
+    execution: 'inline',
+    persistByDefault: true,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        operationId: { type: 'string', description: 'Operation the run executes (metadata on the receipt)' },
+        parameters: { type: 'object', description: 'Parameters payload for the spec' },
+        executable: {
+          type: 'object',
+          properties: {
+            path: { type: 'string' },
+            argv: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['path'],
+        },
+        limits: {
+          type: 'object',
+          properties: {
+            wallSeconds: { type: 'number' },
+            maxOutputBytes: { type: 'integer' },
+          },
+        },
+        idempotencyKey: { type: 'string', description: 'Required: same key replays the same run without re-execution' },
+        runId: { type: 'string', description: 'Optional explicit run id' },
+      },
+      required: ['operationId', 'idempotencyKey'],
+      additionalProperties: false,
+    },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        runId: { type: 'string' },
+        status: { type: 'string' },
+        idempotentReplay: { type: 'boolean' },
+      },
+      required: ['runId', 'status'],
+    },
+  }),
+
+  'run.reconcile@1': Object.freeze({
+    id: 'run.reconcile@1',
+    capability: 'run',
+    summary: 'Reconcile in-flight runs against the backend: ingest verified receipts, mark backend-unknown runs orphaned, never fabricate.',
+    effects: Object.freeze(['read', 'write']),
+    dependencies: Object.freeze([]),
+    execution: 'inline',
+    persistByDefault: false,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        runIds: { type: 'array', items: { type: 'string' }, description: 'Optional subset; default reconciles all in-flight runs' },
+      },
+      additionalProperties: false,
+    },
+    outputSchema: {
+      type: 'object',
+      properties: {
+        checked: { type: 'integer' },
+        ingested: { type: 'array' },
+        orphaned: { type: 'array' },
+        stillRunning: { type: 'array' },
+        unreachable: { type: 'array' },
+      },
+      required: ['checked'],
+    },
+  }),
+
   'workflow.status@1': Object.freeze({
     id: 'workflow.status@1',
     capability: 'workflow',

@@ -15,6 +15,10 @@ import { executeRunSpec, getRunStatus, cancelRun } from '../jobs/executor.js';
 import { createRunSpec } from '../jobs/run-spec.js';
 import { prepareData } from '../data/prepare.js';
 import { getNotebookSession } from '../notebook/kernel-manager.js';
+import { guardBackend } from '../jobs/backends/interface.js';
+import { getLocalProcessBackend } from '../jobs/backends/local-process.js';
+import { createResourcePolicy } from '../jobs/resource-policy.js';
+import { reconcileRuns } from '../jobs/reconcile.js';
 import { recordExecution, saveNotebookDocument, loadNotebookDocument } from '../notebook/execution-record.js';
 import { replayExecutionRecord } from '../notebook/replay.js';
 import { ResearchWorkflowStore } from '../workflows/store.js';
@@ -394,6 +398,53 @@ export async function dispatchOperation(operationId, args = {}, context = {}) {
       }
 
       // --- RUN ---
+      case 'run.submit@1': {
+        // Policy is DERIVED from the workspace, never taken from caller args
+        // (caller-supplied policy would be a policy-injection hole).
+        const policy = createResourcePolicy({ workspace: ws });
+        const backend = guardBackend(getLocalProcessBackend());
+        const spec = createRunSpec({
+          runId: args.runId,
+          operationId: args.operationId,
+          parameters: args.parameters || {},
+          executable: args.executable,
+          limits: args.limits || { wallSeconds: 600, maxOutputBytes: 1024 * 1024 },
+          idempotencyKey: args.idempotencyKey,
+        });
+        const submitted = await backend.submit({ tenant: ws, spec, idempotencyKey: args.idempotencyKey });
+        return {
+          status: 'completed',
+          summary: 'Run ' + submitted.backendRunId + ' submitted to local-process backend (' + submitted.status + ')' + (submitted.idempotentReplay ? ' [idempotent replay, not re-executed]' : '') + '.',
+          measurements: {
+            runId: submitted.backendRunId,
+            status: submitted.status,
+            idempotentReplay: Boolean(submitted.idempotentReplay),
+          },
+          artifacts: [],
+          issues: [],
+          data: submitted,
+        };
+      }
+
+      case 'run.reconcile@1': {
+        const backend = guardBackend(getLocalProcessBackend());
+        const report = await reconcileRuns({
+          workspace: ws,
+          backend,
+          runIds: Array.isArray(args.runIds) ? args.runIds.map(String) : undefined,
+        });
+        return {
+          status: 'completed',
+          summary: 'Reconciled ' + report.checked + ' in-flight run(s): ' + report.ingested.length + ' ingested, ' + report.orphaned.length + ' orphaned, ' + report.stillRunning.length + ' still running, ' + report.unreachable.length + ' unreachable.',
+          measurements: report,
+          artifacts: [],
+          issues: report.orphaned.length > 0
+            ? [{ severity: 'warning', code: 'ORPHANED_RUNS', message: 'Backend had no record of: ' + report.orphaned.join(', ') + ' — marked orphaned, never completed' }]
+            : [],
+          data: report,
+        };
+      }
+
       case 'run.status@1': {
         const runId = String(args.runId || '').trim();
         if (!runId) {

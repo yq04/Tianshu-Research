@@ -303,4 +303,80 @@ describe('Phase 10: Backend Contract', () => {
 
     await inFlight; // settle the blocker
   });
+
+  it('run.submit@1 through the catalogue closes submit/query loop with idempotency', async () => {
+    const { dispatchOperation } = await import('../operations/dispatcher.js');
+    mkdirSync(tenantA, { recursive: true });
+
+    const submitArgs = {
+      operationId: 'benchmark.run@1',
+      runId: 'cat-run-1', // stable id: the idempotency key binds to this run
+      executable: { path: process.execPath, argv: ['-e', 'console.log("async run")'] },
+      limits: { wallSeconds: 30, maxOutputBytes: 2048 },
+      idempotencyKey: 'cat-key-1',
+    };
+    const first = await dispatchOperation('run.submit@1', submitArgs, { workspace: tenantA });
+    assert.equal(first.status, 'completed');
+    const runId = first.measurements.runId;
+    assert.equal(runId, 'cat-run-1');
+    assert.equal(first.measurements.idempotentReplay, false);
+
+    // Same key + same run id: replay, no re-execution.
+    const replay = await dispatchOperation('run.submit@1', submitArgs, { workspace: tenantA });
+    assert.equal(replay.measurements.runId, runId);
+    assert.equal(replay.measurements.idempotentReplay, true);
+    assert.match(replay.summary, /idempotent replay/);
+
+    // Same key with a DIFFERENT run id: honest conflict. dispatchOperation
+    // surfaces backend errors as failed results (never silent re-runs).
+    const conflict = await dispatchOperation(
+      'run.submit@1',
+      { ...submitArgs, runId: 'cat-run-2' },
+      { workspace: tenantA },
+    );
+    assert.equal(conflict.status, 'failed');
+    assert.match(conflict.summary + JSON.stringify(conflict.issues), /already bound/);
+
+    // Poll via the existing status operation through queued/running to terminal.
+    let status = await dispatchOperation('run.status@1', { runId }, { workspace: tenantA });
+    for (let i = 0; i < 200 && ['queued', 'running'].includes(status.data?.status); i++) {
+      await new Promise((r) => setTimeout(r, 50));
+      status = await dispatchOperation('run.status@1', { runId }, { workspace: tenantA });
+    }
+    assert.equal(status.data.status, 'completed');
+  });
+
+  it('run.reconcile@1 reports in-flight and settled runs truthfully', async () => {
+    const { dispatchOperation } = await import('../operations/dispatcher.js');
+    mkdirSync(tenantA, { recursive: true });
+
+    await dispatchOperation(
+      'run.submit@1',
+      {
+        operationId: 'benchmark.run@1',
+        runId: 'recon-1',
+        executable: { path: process.execPath, argv: ['-e', 'setTimeout(() => {}, 1200)'] },
+        limits: { wallSeconds: 30, maxOutputBytes: 2048 },
+        idempotencyKey: 'recon-key',
+      },
+      { workspace: tenantA },
+    );
+
+    // While the run is queued/running: reconciliation reports it, changes nothing.
+    let report = await dispatchOperation('run.reconcile@1', {}, { workspace: tenantA });
+    for (let i = 0; i < 50 && report.data.checked === 0; i++) {
+      await new Promise((r) => setTimeout(r, 25));
+      report = await dispatchOperation('run.reconcile@1', {}, { workspace: tenantA });
+    }
+    assert.equal(report.data.checked, 1);
+    assert.deepEqual(report.data.stillRunning, ['recon-1']);
+    assert.equal(report.data.ingested.length, 0);
+
+    await dispatchOperation('run.cancel@1', { runId: 'recon-1', reason: 'test settle' }, { workspace: tenantA });
+
+    // After the run is terminal: nothing in flight remains.
+    const after = await dispatchOperation('run.reconcile@1', {}, { workspace: tenantA });
+    assert.equal(after.data.checked, 0);
+    assert.equal(after.data.orphaned.length, 0);
+  });
 });
