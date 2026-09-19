@@ -1,6 +1,6 @@
 # HANDOFF — Tianshu-Research (天枢理工科研能力扩展包)
 
-> **给完全没有本会话上下文的新 Agent 或开发者**：动手前请完整精读本文。本阶段已彻底完成针对「跨项目 MCP 行为污染与前缀缓存破坏」以及「固化工作流脱离理工科研实际」两大结构性缺陷的全面架构重构与持续演进（Phase 1 至 Phase 12 全部插件侧 + Phase 10 CPU 核心 + 真实线上冒烟 + DeepSeek 缓存实测 + 异步运行操作化）。当前插件与独立仓库全部 **356 项 Node.js 单测与 14 项 Python 测试 100% 绿灯通过（Exit 0）**，0.2.0 已发布（GitHub tag），代码已全量同步。
+> **给完全没有本会话上下文的新 Agent 或开发者**：动手前请完整精读本文。本阶段已彻底完成针对「跨项目 MCP 行为污染与前缀缓存破坏」以及「固化工作流脱离理工科研实际」两大结构性缺陷的全面架构重构与持续演进（Phase 1 至 Phase 12 全部插件侧 + Phase 10 CPU 核心 + 真实线上冒烟 + DeepSeek 缓存实测 + 异步运行操作化 + Jupyter 真内核冒烟）。当前插件与独立仓库全部 **356 项 Node.js 单测与 14 项 Python 测试 100% 绿灯通过（Exit 0）**，0.2.0 已发布（GitHub tag），代码已全量同步。
 
 ---
 
@@ -168,6 +168,7 @@
    - 独立开源仓已提交 `eeafc76`（156 文件，Phase 8/9A/9B/11/12 全量）并打标 **`0.2.0`**，`main` 与标签均已推送至 `https://github.com/yq04/Tianshu-Research`；
    - 宿主仓以路径限定方式提交 `plugins/tianshu-research/` 与 `HANDOFF.md`（共享工作区纪律：未触碰其他会话文件，如 `docs/research/`）；
    - 真实 DeepSeek cache probe ✅ 已执行（2026-09-19）：20 轮同前缀会话，收敛段命中率 95.1%（优秀档），前缀全部稳定，与 95–99% 宣称一致；证据见 `plugins/tianshu-research/docs/smoke.md` 第 4 节；
+   - Jupyter 真内核冒烟 ✅ 已执行（2026-09-19）：真实 bridge.py → jupyter_client 8.10.0 → ipykernel 7.3.0 全链路 6/6 全过（算术/隐藏状态/流捕获/诚实错误/重启清态/干净重放 reproduced）；真机测试发现并修复输出监听误用 shell 通道的真实缺陷（改走 IOPUB）；证据见 `docs/smoke.md` 第 5 节；
    - 真实宿主逐格验收（Cursor / Claude Desktop / VS Code / 天枢 sidecar）未执行，`docs/host-compatibility.md` 中如实标注。
 
 ### 15. 发布后完善 II：异步运行操作化（background-jobs 适配入口，插件侧闭环）

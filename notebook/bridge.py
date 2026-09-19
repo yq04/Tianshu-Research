@@ -63,7 +63,10 @@ class RealKernelHandle:
         return self.client.execute(code)
 
     def get_msg(self, timeout):
-        return self.client.get_msg(timeout=timeout)
+        # The output-watching loop consumes the IOPUB channel; the shell
+        # channel's get_msg blocks on the request-reply socket and starves
+        # the loop on Windows.
+        return self.client.get_iopub_msg(timeout=timeout)
 
     def interrupt(self):
         self.manager.interrupt_kernel()

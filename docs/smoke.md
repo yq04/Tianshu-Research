@@ -62,3 +62,20 @@
 | 逐轮 miss 量 | 稳定 ~4.1–4.2k tokens（可变尾部自然增长） | 无异常碎裂 |
 
 **结论：缓存健康度「优秀」，与文档宣称的 95–99% 稳态命中率一致，未触发「达不到既往命中率时分析上下文/TTL」条款。** 探针期间未改写任何观察值。
+
+---
+
+## 5. Jupyter 真内核冒烟（2026-09-19，Phase 9B 验收项）
+
+按 `docs/notebook.md` 声明路径安装声明依赖（`pip install -r requirements-notebook.txt` → jupyter_client 8.10.0 + ipykernel 7.3.0，python3 kernelspec），经**真实 bridge.py → jupyter_client → ipykernel** 全链路执行：`node scripts/notebook-live-smoke.js`。
+
+| 检查项 | 结果 | 证据 |
+|---|---|---|
+| kernel.execute.arithmetic | PASS | 真内核返回 execute_result '5'（epoch 1） |
+| kernel.hiddenstate.within-epoch | PASS | 同 epoch 内 `X=21` 后 `X*2` → '42' |
+| kernel.stream.capture | PASS | print() 流式输出捕获 'hello smoke' |
+| kernel.error.honest | PASS | `1/0` 如实 ZeroDivisionError，不伪造 |
+| kernel.restart.clears-state | PASS | 重启后 epoch 1→2，`X` → NameError（隐藏状态确已清零） |
+| kernel.replay.reproduced | PASS | 干净内核重放 2 cell → reproduced / pass |
+
+**结论：6/6 全过。** 真机测试发现并修复一处 fake 测试无法暴露的真实缺陷：输出监听误用 shell 通道 `get_msg`（阻塞），已改走 IOPUB 通道 `get_iopub_msg`（parent_header 关联语义不受影响）。复跑：`node scripts/notebook-live-smoke.js`（依赖未安装时诚实 blocked，不伪造）。
