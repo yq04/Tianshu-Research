@@ -14,8 +14,22 @@ import { dispatchOperation } from '../operations/dispatcher.js';
 import { saveArtifact } from '../ledger/artifact-store.js';
 import { recordRun, updateRun, getRun } from './run-store.js';
 import { terminateProcessTree } from './process-control.js';
+import { assertRunAllowed, PolicyViolationError } from './resource-policy.js';
 
 const activeRuns = new Map();
+
+/**
+ * Number of runs currently executing (not yet settled) in this process for
+ * the given workspace. Feeds the resource policy concurrency ceiling.
+ */
+export function countActiveRuns(workspace = process.cwd()) {
+  const prefix = `${resolve(workspace)}::`;
+  let count = 0;
+  for (const key of activeRuns.keys()) {
+    if (key.startsWith(prefix)) count += 1;
+  }
+  return count;
+}
 
 export function getRunDir(workspace = process.cwd(), runId) {
   return join(resolve(workspace), '.rivet', 'research', 'runs', runId);
@@ -34,6 +48,32 @@ export async function executeRunSpec(workspace, spec, options = {}) {
   writeFileSync(join(runDir, 'run_spec.json'), JSON.stringify(spec, null, 2), 'utf8');
 
   const startTime = new Date().toISOString();
+
+  // 1b. Optional fail-closed resource policy admission: a run that exceeds
+  // the policy is refused BEFORE any process is spawned — recorded honestly
+  // as failed with the policy reason, never silently clamped or dropped.
+  if (options.resourcePolicy) {
+    try {
+      assertRunAllowed(options.resourcePolicy, spec, { activeRunCount: countActiveRuns(ws) });
+    } catch (err) {
+      const violation = err instanceof PolicyViolationError ? err.code : 'POLICY_INVALID';
+      const message = `RESOURCE_POLICY_REFUSED (${violation}): ${err instanceof Error ? err.message : String(err)}`;
+      const receipt = createRunReceipt({
+        runId,
+        operationId: spec.operationId,
+        specDigest: spec.specDigest,
+        status: 'failed',
+        exitCode: 1,
+        startTime,
+        endTime: new Date().toISOString(),
+        metrics: { stdoutBytes: 0, stderrBytes: 0 },
+        error: message,
+      });
+      writeFileSync(join(runDir, 'run_receipt.json'), JSON.stringify(receipt, null, 2), 'utf8');
+      recordRun(ws, { runId, status: 'failed', exitCode: 1, endTime: receipt.endTime, receipt });
+      return { receipt, error: message };
+    }
+  }
   recordRun(ws, {
     runId,
     spec,

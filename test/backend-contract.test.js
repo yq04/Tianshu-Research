@@ -247,4 +247,60 @@ describe('Phase 10: Backend Contract', () => {
       (e) => e.code === 'EXECUTABLE_MISSING',
     );
   });
+
+  it('executor enforces an injected resource policy before spawning', async () => {
+    const { executeRunSpec } = await import('../jobs/executor.js');
+    const { getRunStatus } = await import('../jobs/executor.js');
+
+    const policy = createResourcePolicy({ workspace: tenantA, maxWallSeconds: 100 });
+
+    // Wall-time refusal: no process is spawned, the refusal is recorded honestly.
+    const overSpec = createRunSpec({
+      runId: 'policy-refused',
+      operationId: 'benchmark.run@1',
+      executable: { path: process.execPath, argv: ['-e', 'console.log("should never run")'] },
+      limits: { wallSeconds: 5000, maxOutputBytes: 2048 },
+    });
+    const refused = await executeRunSpec(tenantA, overSpec, { resourcePolicy: policy });
+    assert.equal(refused.receipt.status, 'failed');
+    assert.match(refused.receipt.error, /RESOURCE_POLICY_REFUSED \(WALL_TIME_EXCEEDED\)/);
+    const stored = getRunStatus(tenantA, 'policy-refused');
+    assert.equal(stored.status, 'failed');
+    assert.match(stored.receipt.error, /RESOURCE_POLICY_REFUSED/);
+
+    // Without a policy the same spec executes (policy is strictly opt-in).
+    const unconstrained = await executeRunSpec(tenantA, overSpec, {});
+    assert.equal(unconstrained.receipt.status, 'completed');
+  });
+
+  it('resource policy concurrency ceiling counts only active runs', async () => {
+    const { executeRunSpec, countActiveRuns } = await import('../jobs/executor.js');
+    mkdirSync(tenantA, { recursive: true }); // spawn cwd must exist
+
+    const policy = createResourcePolicy({ workspace: tenantA, maxConcurrentRuns: 1, allowedExecutables: [process.execPath] });
+    const blocker = createRunSpec({
+      runId: 'policy-blocker',
+      operationId: 'benchmark.run@1',
+      executable: { path: process.execPath, argv: ['-e', 'setTimeout(() => {}, 1500)'] },
+      limits: { wallSeconds: 30, maxOutputBytes: 2048 },
+    });
+    const inFlight = executeRunSpec(tenantA, blocker, { resourcePolicy: policy });
+
+    // Wait until the blocker is actually active.
+    for (let i = 0; i < 100 && countActiveRuns(tenantA) === 0; i++) {
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    assert.ok(countActiveRuns(tenantA) >= 1);
+
+    const second = createRunSpec({
+      runId: 'policy-second',
+      operationId: 'benchmark.run@1',
+      executable: { path: process.execPath, argv: ['-e', 'console.log("no")'] },
+      limits: { wallSeconds: 30, maxOutputBytes: 2048 },
+    });
+    const refused = await executeRunSpec(tenantA, second, { resourcePolicy: policy });
+    assert.match(refused.receipt.error, /CONCURRENCY_EXCEEDED/);
+
+    await inFlight; // settle the blocker
+  });
 });

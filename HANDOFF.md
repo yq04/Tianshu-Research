@@ -1,6 +1,6 @@
 # HANDOFF — Tianshu-Research (天枢理工科研能力扩展包)
 
-> **给完全没有本会话上下文的新 Agent 或开发者**：动手前请完整精读本文。本阶段已彻底完成针对「跨项目 MCP 行为污染与前缀缓存破坏」以及「固化工作流脱离理工科研实际」两大结构性缺陷的全面架构重构与持续演进（Phase 1 至 Phase 7，Phase 8 插件侧，Phase 9A/9B，Phase 11 能力基准，Phase 12 发布准备，Phase 10 CPU 核心）。当前插件与独立仓库全部 **352 项 Node.js 单测与 14 项 Python 测试 100% 绿灯通过（Exit 0）**，0.2.0 已发布（GitHub tag），代码已全量同步。
+> **给完全没有本会话上下文的新 Agent 或开发者**：动手前请完整精读本文。本阶段已彻底完成针对「跨项目 MCP 行为污染与前缀缓存破坏」以及「固化工作流脱离理工科研实际」两大结构性缺陷的全面架构重构与持续演进（Phase 1 至 Phase 12 全部插件侧 + Phase 10 CPU 核心 + 真实线上冒烟）。当前插件与独立仓库全部 **354 项 Node.js 单测与 14 项 Python 测试 100% 绿灯通过（Exit 0）**，0.2.0 已发布（GitHub tag），代码已全量同步。
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## 二、已经完成了什么（交付清单）
 
-全量 **352 项 Node.js 单元测试与 14 项 Python 测试 100% 绿灯（Exit 0）**，以下核心成果已全量同步至双仓库：
+全量 **354 项 Node.js 单元测试与 14 项 Python 测试 100% 绿灯（Exit 0）**，以下核心成果已全量同步至双仓库：
 
 ### 1. Phase 1：契约固化、Scope 守卫与量纲物理漏洞修复
 - **作用域与调用守卫**（`scope/workspace-scope.js`、`scope/invocation-guard.js`）：实现可信根目录解析；补齐缺失字段；严格拦截非科研项目越界写入与执行。
@@ -135,6 +135,10 @@
 - **断线对账**（`jobs/reconcile.js`）：崩溃/断线后以后端为权威对账——已验证终态收据照实入库；后端无记录的任务标记 `orphaned`（诚实地报「从未验证完成」，绝不升级为 completed）；后端不可达时本地状态分毫不动；对账幂等；按工作区隔离。
 - **run-store 增强**：`getRun` 返回形状补齐 `error` 字段（对账的 orphaned 原因可被如实读取）。
 - **新增测试**：`test/backend-contract.test.js`（9 项：契约校验、跨租拒绝、not_found 诚实、幂等不重执行、本地真实收据、取消收据、注册表 support 纪律、资源策略全反例）、`test/remote-reconcile.test.js`（6 项：收据入库、orphaned 不伪造、不可达不动状态、活跃任务不动、幂等、租户隔离）。
+
+### 14. 发布后完善：真实线上冒烟与策略强制执行
+- **连接器线上冒烟**（`scripts/live-smoke.js`）：对真实外部源只读验证——OpenAlex 检索+DOI 直查（真实数据 4 个 versions 合并保留，实证同 DOI 版本不丢失）、arXiv 检索（经跨进程限流器、landingUrl 保留版本号）；**6/6 执行检查全过**，Zotero 无凭据诚实 SKIPPED（零外部写入）。结果已记入 `docs/smoke.md`；复跑 `node scripts/live-smoke.js`。
+- **资源策略强制执行**：`executeRunSpec` 接受可选 `resourcePolicy`（fail-closed 准入）——违规运行在**进程 spawn 之前**被拒绝并以 `RESOURCE_POLICY_REFUSED (<code>)` 如实记录收据；`countActiveRuns` 支撑并发上限；`allowedExecutables` 显式白名单豁免工作区外运行时二进制（node/python）。策略严格 opt-in，未注入时行为不变。
 
 ---
 

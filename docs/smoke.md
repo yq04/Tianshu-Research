@@ -28,3 +28,21 @@
 - 当前开发代码仓库内未检出 desktop/ 前端 Tauri 源码目录（宿主主干将桌面端与 CLI 运行时分离）。
 - 服务端生命周期接口（GET /mcp/presets、POST /mcp/servers、DELETE /mcp/servers/:id、onToolsRemoved 世代撤销）已通过 mcp-hot-add.test.ts 与 mcp-inject-tools.test.ts 完整单测验证。
 - 待获得包含 Tauri 桌面源码的工程环境后，再行验证端到端桌面卡片可见性与侧边栏渲染。
+
+---
+
+## 3. 0.2.0 连接器线上冒烟（2026-09-19，Phase 9A 验收项）
+
+通过 Phase 9A 新连接器（`connectors/`）对真实外部源执行只读冒烟：`node scripts/live-smoke.js`。最小请求纪律（每源 1 次检索 + 1 次 DOI 验证），arXiv 走跨进程限流器，**零写入外部库**：
+
+| 检查项 | 结果 | 证据 |
+|---|---|---|
+| openalex.search.http | PASS | 分页 1 次，原始 25 条（游标连接器） |
+| openalex.schema.record | PASS | openalex:W2781738013，**4 个 versions 合并保留**（真实数据验证同 DOI 版本不丢失） |
+| openalex.schema.abstract | PASS | 倒排摘要重构 500 字符 |
+| openalex.doiLookup | PASS | doi:10.22331/q-2018-08-06-79 → "Quantum Computing in the NISQ era and beyond" |
+| arxiv.search.http | PASS | arXiv:2105.02723（经跨进程限流器，默认 ≥3s 间隔） |
+| arxiv.schema.record | PASS | landingUrl 保留版本号 v1 |
+| zotero.readOnly | SKIPPED | 未配置 ZOTERO_USER_ID/ZOTERO_API_KEY——诚实跳过，绝不伪造；配置后仅只读 |
+
+**结论：6/6 执行检查全过，1 项诚实跳过。** 复跑命令：`node scripts/live-smoke.js`（可选 `--out <path>` 落盘报告）。退出码 0 = 全部已执行检查通过；跳过项不计入失败。

@@ -24,6 +24,7 @@ export function createResourcePolicy({
   maxOutputBytes = 64 * 1024 * 1024,
   maxConcurrentRuns = 4,
   maxMemoryBytes = Number.POSITIVE_INFINITY,
+  allowedExecutables = [],
 } = {}) {
   if (!workspace) throw new PolicyViolationError('resource policy requires a workspace root', 'POLICY_INVALID');
   return {
@@ -32,6 +33,10 @@ export function createResourcePolicy({
     maxOutputBytes,
     maxConcurrentRuns,
     maxMemoryBytes,
+    // Runtime binaries (node, python, ...) legitimately live outside a
+    // workspace; the policy must declare them explicitly instead of
+    // pretending every invocation is workspace-contained.
+    allowedExecutables: (allowedExecutables || []).map((p) => resolve(p)),
   };
 }
 
@@ -86,7 +91,14 @@ export function assertRunAllowed(policy, spec, { activeRunCount = 0 } = {}) {
       // Bare command names (e.g. "python") are resolved by the OS; only
       // path-like executables are containment-checked.
     } else {
-      assertInsideWorkspace(policy.workspaceRoot, p);
+      const resolved = resolve(p);
+      if (policy.allowedExecutables.includes(resolved)) {
+        if (!existsSync(resolved)) {
+          throw new PolicyViolationError(`executable "${resolved}" does not exist on disk`, 'EXECUTABLE_MISSING');
+        }
+      } else {
+        assertInsideWorkspace(policy.workspaceRoot, p);
+      }
     }
   }
 
