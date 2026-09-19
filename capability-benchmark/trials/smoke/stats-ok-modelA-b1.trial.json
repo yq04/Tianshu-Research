@@ -1,0 +1,11 @@
+{
+  "trialId": "stats-ok-modelA-b1",
+  "taskId": "stats-nonsignificance@smoke",
+  "modelId": "modelA",
+  "budgetId": "budget-b1",
+  "submitted": {
+    "conclusion": "not_significant",
+    "rawOutput": { "method": "welch", "alpha": 0.05, "statistic": 0.0927, "pValue": 0.928034 }
+  },
+  "usage": { "mainModel": { "inputTokens": 1200, "outputTokens": 300, "cacheReadTokens": 900 }, "sidecar": { "council": { "inputTokens": 200, "outputTokens": 80 } } }
+}

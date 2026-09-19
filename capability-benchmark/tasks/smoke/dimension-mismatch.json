@@ -1,0 +1,11 @@
+{
+  "taskId": "dimension-mismatch@smoke",
+  "capability": "theory",
+  "title": "Detect a dimensional inconsistency between force and velocity",
+  "instruction": "Check dimensional consistency of 'lhs = rhs' with the task's pinned expressions and report verdict 'consistent' or 'inconsistent', including the actual check result as receipt.",
+  "datasetRef": null,
+  "oracle": {
+    "type": "dimension",
+    "params": { "lhs": "force", "rhs": "velocity" }
+  }
+}

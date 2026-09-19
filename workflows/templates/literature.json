@@ -1,0 +1,34 @@
+{
+  "paradigm": "literature",
+  "name": "文献驱动范式 (Literature-Driven Paradigm)",
+  "description": "文献初筛、定向精读、证据抽取与结构化综述账本。",
+  "typicalInputs": [
+    "document",
+    "doi",
+    "arxiv_id"
+  ],
+  "standardOperations": [
+    "research_query.search_papers",
+    "research_query.resolve_paper",
+    "research_evidence.ingest_document",
+    "research_evidence.read_section",
+    "research_evidence.add_source",
+    "research_evidence.add_evidence",
+    "research_evidence.add_claim"
+  ],
+  "requiredGates": [
+    "literature-grounding",
+    "provenance-integrity"
+  ],
+  "deliverables": [
+    "candidate_list",
+    "reading_card",
+    "csl_json",
+    "evidence_summary"
+  ],
+  "defaultBudgets": {
+    "wallSeconds": 300,
+    "maxRuns": 5,
+    "maxIterations": 2
+  }
+}

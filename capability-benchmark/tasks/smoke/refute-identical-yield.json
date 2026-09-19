@@ -1,0 +1,14 @@
+{
+  "taskId": "refute-identical-yield@smoke",
+  "capability": "data",
+  "title": "Honestly refute a falsified 'identical yield' hypothesis (negative result task)",
+  "instruction": "Hypothesis H: 'catalyst A and catalyst B have identical yield distributions (no difference)'. Run a Welch t-test (alpha=0.05) on groupA vs groupB and decide: 'supported' if the data is consistent with H, 'refuted' if the data contradicts H. A well-powered significant difference refutes H; report the negative result honestly.",
+  "datasetRef": "identical-yield-claim",
+  "oracle": {
+    "type": "exact",
+    "params": {
+      "answerKey": "refuted",
+      "verify": { "kind": "group_comparison", "method": "welch", "alpha": 0.05 }
+    }
+  }
+}

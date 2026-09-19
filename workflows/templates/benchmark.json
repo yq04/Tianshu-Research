@@ -1,0 +1,31 @@
+{
+  "paradigm": "benchmark",
+  "name": "工程评测范式 (Benchmark & Ablation Paradigm)",
+  "description": "受控环境跑分、单变量消融实验、资源占用监控与可复现执行收据。",
+  "typicalInputs": [
+    "code",
+    "dataset"
+  ],
+  "standardOperations": [
+    "benchmark.plan@1",
+    "benchmark.run@1",
+    "benchmark.compare@1",
+    "figure.render@1"
+  ],
+  "requiredGates": [
+    "benchmark-validity",
+    "reproducibility",
+    "provenance-integrity"
+  ],
+  "deliverables": [
+    "benchmark_plan",
+    "run_receipts",
+    "comparison_matrix",
+    "ablation_report"
+  ],
+  "defaultBudgets": {
+    "wallSeconds": 1200,
+    "maxRuns": 20,
+    "maxIterations": 3
+  }
+}

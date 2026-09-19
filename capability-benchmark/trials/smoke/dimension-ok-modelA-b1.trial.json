@@ -1,0 +1,10 @@
+{
+  "trialId": "dimension-ok-modelA-b1",
+  "taskId": "dimension-mismatch@smoke",
+  "modelId": "modelA",
+  "budgetId": "budget-b1",
+  "submitted": {
+    "verdict": "inconsistent",
+    "rawOutput": { "consistent": false, "lhsPowers": { "mass": 1, "length": 1, "time": -2 }, "rhsPowers": { "length": 1, "time": -1 } }
+  }
+}

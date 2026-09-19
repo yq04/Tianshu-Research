@@ -1,12 +1,15 @@
 {
   "name": "tianshu-research",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "OA literature search (arXiv + OpenAlex), Evidence Ledger, journal palettes, plus research-flow skill",
   "private": true,
   "type": "module",
+  "bin": {
+    "tianshu-research": "./cli/research.js"
+  },
   "tianshu": {
     "name": "tianshu-research",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Click-to-install OA paper search (arXiv/OpenAlex), Evidence Ledger, journal palettes, plus research screening skill. Not an auto-paper writer.",
     "entry": "index.js",
     "tools": [
@@ -45,6 +48,7 @@
   "homepage": "https://github.com/yq04/Tianshu-Research#readme",
   "scripts": {
     "test": "node --test \"test/*.test.js\"",
-    "test:python": "python test/test_journal_palette.py"
+    "test:python": "python -m unittest discover -s test -p \"test_*.py\"",
+    "benchmark:smoke": "node capability-benchmark/harness.js --suite smoke --mode replay --offline"
   }
 }

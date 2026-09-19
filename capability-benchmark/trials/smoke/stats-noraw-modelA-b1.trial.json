@@ -1,0 +1,7 @@
+{
+  "trialId": "stats-noraw-modelA-b1",
+  "taskId": "stats-nonsignificance@smoke",
+  "modelId": "modelA",
+  "budgetId": "budget-b1",
+  "submitted": { "conclusion": "not_significant" }
+}

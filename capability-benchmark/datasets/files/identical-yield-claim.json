@@ -1,0 +1,6 @@
+{
+  "datasetId": "identical-yield-claim",
+  "description": "Two synthetic catalyst yield groups (n=6 each) with a large significant difference (Welch p<1e-6, Cohen's d=-53.45). A hypothesis claiming 'identical yield' must be REFUTED; the negative result is the correct answer.",
+  "groupA": [10.1, 10.3, 10.2, 10.4, 10.0, 10.5],
+  "groupB": [20.1, 20.3, 20.2, 20.4, 20.0, 20.5]
+}

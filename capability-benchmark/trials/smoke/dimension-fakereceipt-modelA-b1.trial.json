@@ -1,0 +1,10 @@
+{
+  "trialId": "dimension-fakereceipt-modelA-b1",
+  "taskId": "dimension-mismatch@smoke",
+  "modelId": "modelA",
+  "budgetId": "budget-b1",
+  "submitted": {
+    "verdict": "consistent",
+    "rawOutput": { "consistent": true }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "taskId": "stats-nonsignificance@smoke",
+  "capability": "data",
+  "title": "Report the correct statistical conclusion for a non-significant comparison",
+  "instruction": "Run a Welch t-test (alpha=0.05) comparing groupA vs groupB in the dataset and report the conclusion. A non-significant result is a legitimate finding: report 'not_significant' exactly when p >= alpha.",
+  "datasetRef": "nonsignificant-groups",
+  "oracle": {
+    "type": "statistical",
+    "params": { "method": "welch", "alpha": 0.05 }
+  }
+}

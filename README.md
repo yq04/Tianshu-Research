@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![MCP Compatible](https://img.shields.io/badge/MCP-JSON--RPC_2.0-green.svg)](https://modelcontextprotocol.io/)
 [![CI](https://github.com/yq04/Tianshu-Research/actions/workflows/ci.yml/badge.svg)](https://github.com/yq04/Tianshu-Research/actions)
-[![Tests Passing](https://img.shields.io/badge/Tests-86%20passing-brightgreen.svg)](test/)
+[![Tests Passing](https://img.shields.io/badge/Tests-330%20passing-brightgreen.svg)](test/)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B%20ESM-informational.svg)](package.json)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](figure/)
 
@@ -13,7 +13,17 @@
 
 ---
 
-## 一、五层科研工作流全景吸收与工程边界
+## 〇、0.2.0 版本亮点（Phase 8 插件侧 / 9A / 9B / 11 / 12）
+
+- **Council 评审契约与 CVM 单向投影**（`integration/`）：reader/reviewer/chair 席位矩阵（任何角色无写/执行权），Council 缺席不通过、多数赞成不覆盖反例 gate、chair 一票否决；科研事实向宿主认知层的字节级确定性只读投影。
+- **文献生态连接器**（`connectors/`）：OpenAlex 游标分页与同 DOI 版本合并不丢失、arXiv 跨进程限流（全机 3 秒/请求）、Zotero Web API v3 条件写入（412 冲突不静默覆盖）、离线快照回放（`SNAPSHOT_MISS` 绝不伪造）。
+- **Jupyter 交互与清洁复跑**（`notebook/`）：探索 ≠ 复现——乱序 cell 与隐藏状态记录被正式复现门禁诚实拒绝；缺 Jupyter 环境 `blocked` 而非伪造收据。
+- **能力基准**（`capability-benchmark/`）：数据集哈希固定、假收据必 fail、p-hacking 必 fail、负结果满分、失败 trial 不出分母；`npm run benchmark:smoke` 离线一键运行。
+- **发布准备**（`scripts/`）：`check-release-parity.js` 双仓逐文件哈希 parity 校验（显式白名单、只读不覆盖并发修改）；`capture-host-surface.js` 宿主表面快照（未测宿主如实标注）。
+
+---
+
+## 一、多范式科研工作流矩阵与工程边界
 
 本项目全面吸收了现代科研工作流体系的核心精髓，并将其与天枢原生架构深度融合：
 
@@ -57,7 +67,7 @@ flowchart TD
 
 | 架构层级 | 工作流核心吸收点 (YES) | 坚决摒弃的过度设计与陷阱 (NO) | 决策依据与工程边界 |
 | :--- | :--- | :--- | :--- |
-| **第 1 层：业务流程层** | **完全吸收五阶段闭环体系**：从文献初筛、方案假说、代码实验、图表撰写到双重门禁质控，支持全生命周期闭环迭代。 | 摒弃“一刀切必须走完 5 阶段”的僵化流程；保留短用（秒查即弃）、中用（精读卡）、长用（账本门禁）三档弹性。 | 满足不同研究深度需求，避免轻量学术查询产生沉重流程包袱。 |
+| **第 1 层：业务流程层** | **解耦为五大自适应科研范式矩阵**：按需分流至 literature（文献）、empirical（数据实证）、theoretical（理论推导）、benchmark（工程跑分）与 hypothesis（敏捷假说）。 | 摒弃“一刀切必须无脑跑完 5 阶段瀑布流”；由任务目标与输入材料自适应生成最小操作 DAG。数据分析任务产生 0 文献请求。 | 满足不同学科与任务深度需求，避免轻量学术查询或纯代码/数据分析产生沉重流程包袱。 |
 | **第 2 层：Agent 执行层** | **系统化映射为天枢原生的 WorkOrder 角色模板**（Scout, Strategist, Coder, Writer, Gatekeeper），通过宿主原生的 `/team` 与 `/council` 分波调度。 | **坚决不在插件内新造 5 套割裂的 Agent 运行时**；避免多进程重复通信开销与独立的调度器混乱。 | 宿主已具备顶级的认知虚拟机（CVM）与多智能体分波引擎，插件专注做好“量具与门禁”。 |
 | **第 3 层：Skills 工具层** | **坚守单一高聚合 Skill（`research-flow`）**，内部以按需 References 下钻；工具面**严格收敛为 4 大公开网关**。 | **坚决不拆分成 8 个独立 Skill 塞入环境**；严禁把细碎小动作暴露为公开顶级工具。 | 严格保护 DeepSeek 前缀缓存！过多的细碎工具会稀释模型注意力、打碎 KV Cache 前缀指纹。 |
 | **第 4 层：MCP 协议层** | 1. **全面拥抱开源 Zotero**：提供标准 CSL-JSON 与 RIS 导出动作，对接社区开源 `zotero-mcp`；<br>2. 写作与图表复用宿主已有环境与 Office 工具。 | **坚决摒弃商业闭源的 EndNote**；严禁在插件内重复造轮子实现 Code 或 Word 读写能力。 | 用户明确要求用 Zotero 替代 EndNote。宿主已有完备的系统级工具，保持插件纯净度。 |
@@ -115,14 +125,27 @@ flowchart TD
 - **推荐方案**：遵循「项目级配置优先于全局配置」哲学，仅在科研工程根目录下配置 `.rivet-config.json`：
   ```json
   {
-    "mcpServers": {
-      "tianshu-research": {
-        "command": "node",
-        "args": ["D:/1_Research/Develop_Research/plugins/tianshu-research/mcp-server.js"]
+    "mcp": {
+      "servers": {
+        "tianshu-research": {
+          "command": "node",
+          "args": ["D:/1_Research/Develop_Research/plugins/tianshu-research/mcp-server.js"]
+        }
       }
     }
   }
   ```
+  > **配置格式说明**：`mcp.servers` 是天枢的原生项目配置格式（写于项目根目录 `.rivet-config.json` 或 `rivet.json`）。外部宿主（如 Cursor）在 `.cursor/mcp.json` 中使用顶层 `mcpServers` 格式：
+  > ```json
+  > {
+  >   "mcpServers": {
+  >     "tianshu-research": {
+  >       "command": "node",
+  >       "args": ["D:/1_Research/Develop_Research/plugins/tianshu-research/mcp-server.js"]
+  >     }
+  >   }
+  > }
+  > ```
   日常通用编程项目保持纯净的 26 个核心工具面，实现 **0 额外 Token 消耗、0 缓存抖动、0 注意力干扰**。
 
 ---
@@ -139,17 +162,37 @@ flowchart TD
 
 ---
 
-## 五、五阶段多 Agent 闭环与双重科学门禁
+## 五、五大自适应科研场景范式实战矩阵
 
-基于天枢原生的 `/team` 与 `/council` 编排器，提供开箱即用的五阶段协作流水线（详见 [references/team-templates.md](skills/research-flow/references/team-templates.md)）：
+天枢科研彻底打破旧有的单向瀑布流，基于 `workflows/router.js` 将科研任务自适应路由至五大范式，产生**最小操作依赖图 (DAG)**，拒绝无脑全量调用。
 
-1. **Wave 1: Scout (学术初筛员)**：初筛 OA 论文，提取真实 DOI 与 arXiv ID。
-2. **Wave 2: Strategist (方案架构员)**：分析 Research Gap，提炼创新假设与数值验证方案。
-3. **Wave 3: Coder (实验复现员)**：编写并运行仿真算法代码，验证 Exit 0。
-4. **Wave 4: Writer (学术撰写员)**：应用 `journal_palette` 顶刊配色，撰写论文草稿并导出 CSL-JSON/RIS。
-5. **Wave 5: Council Gatekeeper (双重科学门禁席)**：
-   - **一级证据链门禁**：核验 100% Locator 覆盖与全文 Grounding 真实匹配。
-   - **二级代码复现门禁**：独立复跑核心实验脚本验证数值一致性；未通过闭环打回前序 Wave 迭代。
+### 范式 1：数据驱动实证 (Empirical Paradigm)
+- **典型任务**：“清洗我的风洞实测 CSV 数据，计算均值并按 95% 置信区间出图。”
+- **自适应行为**：识别 `.csv` 输入与统计目标，直接路由至 `empirical`，**产生 0 次文献检索或论文查询**。
+- **操作序列**：`data.inspect@1` → `data.prepare@1` → `statistics.compare@1` / `statistics.fit@1` → `figure.render@1`。
+- **科学门禁**：核验 `data-quality`、`statistical-validity` 与 `figure-traceability`，杜绝大模型臆造虚假置信度。
+
+### 范式 2：理论推导自洽 (Theoretical Paradigm)
+- **典型任务**：“推导 Navier-Stokes 柱坐标展开并验证量纲齐次性与无粘极限。”
+- **自适应行为**：识别方程与推导目标，直接路由至 `theoretical`，无需构造虚拟 DOI 或数据集。
+- **操作序列**：`theory.dimension@1` → `theory.symbolic@1` → `theory.limit@1` → `theory.numeric-check@1`。
+- **科学门禁**：核验 `dimensional-consistency`（SI 基本量纲严格守恒）与 `symbolic-physical`（边界极限退化一致）。
+
+### 范式 3：工程评测消融 (Benchmark Paradigm)
+- **典型任务**：“对已有的 ResNet 代码进行 3 组单变量消融实验并监控延迟与显存。”
+- **自适应行为**：识别代码输入与跑分目标，直接路由至 `benchmark`，不安排 Scout 文献侦察员。
+- **操作序列**：`benchmark.plan@1` → `benchmark.run@1` → `benchmark.compare@1`。
+- **科学门禁**：核验 `benchmark-validity`（单一变量隔离与公平计算预算）与 `reproducibility`（环境指纹与不可篡改的 RunReceipt）。
+
+### 范式 4：敏捷假说回环 (Agile Hypothesis Loop)
+- **典型任务**：“提出并快速验伪损失权重猜想，支持非线性试错。”
+- **自适应行为**：识别可证伪命题，建立假设演进会话（`proposed -> testing -> (supported | refuted | inconclusive) -> revision`）。
+- **科研哲学**：**负结果 (refuted) 是合规的第一类科研发现**！失败实验绝不使用 git 清场抹杀，而是保留反例并自增 Revision 继续演进；受 `maxIterations` 预算约束，超额优雅停下如实报告。
+
+### 范式 5：文献初筛与精读 (Literature Paradigm)
+- **典型任务**：“检索 arXiv 与 OpenAlex 上关于量子退相干最新研究论文并建立综述账本。”
+- **自适应行为**：仅当明确涉及论文、DOI、arXiv 时才激活文献网关，采用静默导入与 `read_section` 定向切片阅读，保护 20 万 Token 窗口。
+- **交付出口**：支持导出标准 CSL-JSON 与 RIS 格式，无缝导入 Zotero 开源生态。
 
 ---
 

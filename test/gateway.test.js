@@ -17,6 +17,8 @@ describe('Gateway and Status Tools', () => {
 
   before(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'tianshu-gateway-test-'))
+    mkdirSync(join(tmpDir, '.rivet'), { recursive: true })
+    writeFileSync(join(tmpDir, '.rivet', 'research.json'), JSON.stringify({ enabled: true }), 'utf8')
   })
 
   after(() => {
@@ -235,6 +237,10 @@ describe('Gateway and Status Tools', () => {
     it('Long usage: ledger grounding gate transitions from red to green', async () => {
       const redDir = mkdtempSync(join(tmpdir(), 'tianshu-accept-red-'))
       const greenDir = mkdtempSync(join(tmpdir(), 'tianshu-accept-green-'))
+      mkdirSync(join(redDir, '.rivet'), { recursive: true })
+      writeFileSync(join(redDir, '.rivet', 'research.json'), JSON.stringify({ enabled: true }), 'utf8')
+      mkdirSync(join(greenDir, '.rivet'), { recursive: true })
+      writeFileSync(join(greenDir, '.rivet', 'research.json'), JSON.stringify({ enabled: true }), 'utf8')
 
       try {
         // Red case: verified claim with missing locator and qualifies relation
@@ -316,6 +322,8 @@ describe('Gateway and Status Tools', () => {
     })
     it('reads sections with read_section and limits token output to maxChars', async () => {
       const ws = mkdtempSync(join(tmpdir(), 'tianshu-gw-readsec-'))
+      mkdirSync(join(ws, '.rivet'), { recursive: true })
+      writeFileSync(join(ws, '.rivet', 'research.json'), JSON.stringify({ enabled: true }), 'utf8')
       try {
         const samplePaper = '# Title: Deep PINN\n\n## Abstract\n\nPINNs integrate physical laws into loss functions.\n\n## Introduction\n\nHere is extensive text explaining the method in detail. ' + 'Lorem ipsum '.repeat(300) + '\n\n## Results\n\nConvergence rate 99.8% achieved.';
         await runResearchEvidence({

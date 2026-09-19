@@ -1,0 +1,7 @@
+# Tianshu-Research — optional Jupyter notebook backend (Phase 9B)
+# Declare-only: install explicitly into your environment if you want
+# notebook.execute@1 / notebook.replay@1 to run against a real kernel.
+# Without these, the plugin degrades to honest `blocked` and never
+# fabricates execution receipts.
+jupyter_client>=8.0.0
+ipykernel>=6.29.0

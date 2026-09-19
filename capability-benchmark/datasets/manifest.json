@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "description": "Fixed benchmark dataset manifest. Every dataset is hash-pinned (sha256 of the exact file bytes); the harness refuses to run against silently-changed data.",
+  "hashAlgorithm": "sha256",
+  "datasets": {
+    "nonsignificant-groups": {
+      "file": "files/nonsignificant-groups.json",
+      "sha256": "fe8f9d808c1c16738fa49a5aa4416305c4dff1f96a1e9cdaf0da7f6b8cb281bb",
+      "license": "CC0-1.0 (plugin-authored synthetic fixture)",
+      "split": "smoke",
+      "rows": 12,
+      "authoredBy": "tianshu-research benchmark fixtures"
+    },
+    "identical-yield-claim": {
+      "file": "files/identical-yield-claim.json",
+      "sha256": "1f4f4c844e773444da11fa629ca67a59211911398855ed2ddbe72b26ec93cdf4",
+      "license": "CC0-1.0 (plugin-authored synthetic fixture)",
+      "split": "smoke",
+      "rows": 12,
+      "authoredBy": "tianshu-research benchmark fixtures"
+    }
+  }
+}

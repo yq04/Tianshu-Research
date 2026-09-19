@@ -26,7 +26,11 @@ def run():
             }))
             return
 
-        action = payload.get("action", "simplify")
+        # Support symbolicAction, operation, or action
+        action = payload.get("symbolicAction") or payload.get("operation") or payload.get("action") or "simplify"
+        if action == "symbolic_eval":
+            action = payload.get("symbolicAction", "simplify")
+
         expr_str = payload.get("expr", "")
         if not expr_str:
             print(json.dumps({"ok": False, "error": "expr is required"}))
@@ -44,13 +48,22 @@ def run():
             target = payload.get("to", "oo")
             target_val = sp.oo if str(target).lower() in ["oo", "inf", "infinity"] else sp.sympify(target)
             var = sp.Symbol(var_str)
-            res = sp.limit(expr, var, target_val)
+            dir_str = payload.get("dir", "+-")
+            res = sp.limit(expr, var, target_val, dir=dir_str)
             print(json.dumps({"ok": True, "result": str(res), "latex": sp.latex(res)}))
             return
         elif action == "diff":
             var_str = payload.get("var", "x")
             var = sp.Symbol(var_str)
             res = sp.diff(expr, var)
+            print(json.dumps({"ok": True, "result": str(res), "latex": sp.latex(res)}))
+            return
+        elif action == "expand":
+            res = sp.expand(expr)
+            print(json.dumps({"ok": True, "result": str(res), "latex": sp.latex(res)}))
+            return
+        elif action == "factor":
+            res = sp.factor(expr)
             print(json.dumps({"ok": True, "result": str(res), "latex": sp.latex(res)}))
             return
         else:
@@ -60,4 +73,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-

@@ -1,0 +1,10 @@
+{
+  "trialId": "stats-ok-modelB-b1",
+  "taskId": "stats-nonsignificance@smoke",
+  "modelId": "modelB",
+  "budgetId": "budget-b1",
+  "submitted": {
+    "conclusion": "not_significant",
+    "rawOutput": { "method": "welch", "alpha": 0.05, "statistic": 0.0927, "pValue": 0.928034 }
+  }
+}

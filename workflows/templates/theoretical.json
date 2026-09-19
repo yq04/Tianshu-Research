@@ -1,0 +1,31 @@
+{
+  "paradigm": "theoretical",
+  "name": "理论推导范式 (Theoretical & Derivation Paradigm)",
+  "description": "形式化假设、量纲齐次性审查、符号代数演算、渐近/边界极限与数值自洽检验。",
+  "typicalInputs": [
+    "formula",
+    "document"
+  ],
+  "standardOperations": [
+    "theory.dimension@1",
+    "theory.symbolic@1",
+    "theory.limit@1",
+    "theory.numeric-check@1"
+  ],
+  "requiredGates": [
+    "dimensional-consistency",
+    "symbolic-physical",
+    "provenance-integrity"
+  ],
+  "deliverables": [
+    "derivation_proof",
+    "dimension_report",
+    "boundary_limits",
+    "numeric_check_receipt"
+  ],
+  "defaultBudgets": {
+    "wallSeconds": 300,
+    "maxRuns": 10,
+    "maxIterations": 3
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "trialId": "refute-ok-modelA-b1",
+  "taskId": "refute-identical-yield@smoke",
+  "modelId": "modelA",
+  "budgetId": "budget-b1",
+  "submitted": {
+    "conclusion": "refuted",
+    "rawOutput": { "method": "welch", "alpha": 0.05, "statistic": -92.582, "pValue": 0 }
+  }
+}

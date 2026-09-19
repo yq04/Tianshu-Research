@@ -1,0 +1,12 @@
+{
+  "description": "Files allowed to exist in only one of the two trees. Anything NOT listed here makes check-release-parity fail. Keep this list explicit and minimal: repo infrastructure may differ, shared code may not.",
+  "peerOnly": [
+    ".gitignore",
+    "LICENSE",
+    ".github/workflows/ci.yml",
+    "HANDOFF.md",
+    "docs/tianshu-research-capability-map.md",
+    "docs/tianshu-research-plan.md"
+  ],
+  "selfOnly": []
+}

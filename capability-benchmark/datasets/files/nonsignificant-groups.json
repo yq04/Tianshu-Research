@@ -1,0 +1,6 @@
+{
+  "datasetId": "nonsignificant-groups",
+  "description": "Two synthetic treatment groups (n=6 each) with NO significant difference (Welch p=0.928034, Cohen's d=0.0535). Authored in-repo as a fixed benchmark fixture; the correct scientific conclusion is 'not_significant'.",
+  "groupA": [12.9, 13.5, 12.8, 15.6, 17.2, 19.2],
+  "groupB": [12.7, 13.6, 12.0, 15.2, 16.8, 20.0]
+}

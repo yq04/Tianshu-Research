@@ -1,0 +1,8 @@
+{
+  "trialId": "stats-failed-modelC-b1",
+  "taskId": "stats-nonsignificance@smoke",
+  "modelId": "modelC",
+  "budgetId": "budget-b1",
+  "status": "failed",
+  "failureReason": "model process crashed mid-task (must stay in the denominator)"
+}

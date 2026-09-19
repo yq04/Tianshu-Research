@@ -138,18 +138,35 @@ function scaleDim(a, n) {
   return res
 }
 
+function isSameDim(a, b) {
+  const allKeys = new Set([...Object.keys(a), ...Object.keys(b)])
+  for (const k of allKeys) {
+    const aVal = a[k] || 0
+    const bVal = b[k] || 0
+    if (Math.abs(aVal - bVal) > 1e-5) return false
+  }
+  return true
+}
+
+function formatPowers(p) {
+  const parts = Object.entries(p).map(([k, v]) => (v === 1 ? k : k + '^' + v))
+  return parts.length > 0 ? '[' + parts.join(' · ') + ']' : '[无量纲 / 1]'
+}
+
 function tokenize(str) {
   const tokens = []
+  const errors = []
   const raw = String(str).replace(/[\[\]]/g, ' ').trim()
   let i = 0
   while (i < raw.length) {
     const c = raw[i]
     if (/\s/.test(c)) { i++; continue }
     if (c === '(' || c === ')') { tokens.push({ type: 'paren', value: c }); i++; continue }
-    if (c === '*' && raw[i + 1] === '*') { tokens.push({ type: 'op', value: '^' }); i += 2; continue }
-    if (c === '^') { tokens.push({ type: 'op', value: '^' }); i++; continue }
-    if (c === '*' || c === '/') { tokens.push({ type: 'op', value: c }); i++; continue }
-    if (/[0-9]/.test(c) || (c === '-' && /[0-9]/.test(raw[i + 1] || ''))) {
+    if (c === '*' && raw[i + 1] === '*') { tokens.push({ type: 'pow_op', value: '^' }); i += 2; continue }
+    if (c === '^') { tokens.push({ type: 'pow_op', value: '^' }); i++; continue }
+    if (c === '*' || c === '/' || c === '·') { tokens.push({ type: 'mul_op', value: c === '·' ? '*' : c }); i++; continue }
+    if (c === '+' || c === '-') { tokens.push({ type: 'add_op', value: c }); i++; continue }
+    if (/[0-9]/.test(c)) {
       let numStr = c
       i++
       while (i < raw.length && /[0-9.]/.test(raw[i])) { numStr += raw[i]; i++ }
@@ -163,7 +180,13 @@ function tokenize(str) {
       tokens.push({ type: 'id', value: idStr })
       continue
     }
+    errors.push("Illegal character '" + c + "' at position " + i)
     i++
+  }
+  if (errors.length > 0) {
+    const err = new SyntaxError('Illegal character(s) in dimensional expression "' + str + '": ' + errors.join('; '))
+    err.errors = errors
+    throw err
   }
   return tokens
 }
@@ -174,28 +197,46 @@ export function parseDimension(expr, customUnits = {}) {
 }
 
 export function parseDimensionWithUnknown(expr, customUnits = {}) {
+  if (typeof expr !== 'string' || !expr.trim()) {
+    throw new SyntaxError('Dimensional expression must be a non-empty string')
+  }
   const tokens = tokenize(expr)
+  if (tokens.length === 0) {
+    throw new SyntaxError('Empty dimensional expression: "' + expr + '"')
+  }
   const lookup = { ...KNOWN_DIMENSIONS, ...customUnits }
   const unknown = []
   let pos = 0
 
   function parseFactor() {
     const t = tokens[pos]
-    if (!t) return {}
+    if (!t) {
+      throw new SyntaxError('Unexpected end of expression: "' + expr + '"')
+    }
     if (t.type === 'id' && t.value.toLowerCase() === 'sqrt') {
       pos++
-      if (tokens[pos] && tokens[pos].value === '(') {
-        pos++
-        const inner = parseTerm()
-        if (tokens[pos] && tokens[pos].value === ')') pos++
-        return scaleDim(inner, 0.5)
+      if (!tokens[pos] || tokens[pos].type !== 'paren' || tokens[pos].value !== '(') {
+        throw new SyntaxError('Expected \'(\' after sqrt in expression: "' + expr + '"')
       }
+      pos++
+      const inner = parseExpr()
+      if (!tokens[pos] || tokens[pos].type !== 'paren' || tokens[pos].value !== ')') {
+        throw new SyntaxError('Unclosed parenthesis after sqrt in expression: "' + expr + '"')
+      }
+      pos++
+      return scaleDim(inner, 0.5)
     }
     if (t.type === 'paren' && t.value === '(') {
       pos++
-      const inner = parseTerm()
-      if (tokens[pos] && tokens[pos].value === ')') pos++
+      const inner = parseExpr()
+      if (!tokens[pos] || tokens[pos].type !== 'paren' || tokens[pos].value !== ')') {
+        throw new SyntaxError('Unclosed parenthesis in expression: "' + expr + '"')
+      }
+      pos++
       return inner
+    }
+    if (t.type === 'paren' && t.value === ')') {
+      throw new SyntaxError('Unexpected closing parenthesis \')\' in expression: "' + expr + '"')
     }
     if (t.type === 'id') {
       pos++
@@ -210,18 +251,24 @@ export function parseDimensionWithUnknown(expr, customUnits = {}) {
       pos++
       return {}
     }
-    pos++
-    return {}
+    throw new SyntaxError('Unexpected token "' + t.value + '" in expression: "' + expr + '"')
   }
 
   function parsePower() {
     let left = parseFactor()
-    if (tokens[pos] && tokens[pos].value === '^') {
+    if (tokens[pos] && tokens[pos].type === 'pow_op') {
       pos++
+      let sign = 1
+      if (tokens[pos] && tokens[pos].type === 'add_op') {
+        if (tokens[pos].value === '-') sign = -1
+        pos++
+      }
       const numToken = tokens[pos]
       if (numToken && numToken.type === 'num') {
         pos++
-        left = scaleDim(left, numToken.value)
+        left = scaleDim(left, sign * numToken.value)
+      } else {
+        throw new SyntaxError('Expected number after exponent operator in expression: "' + expr + '"')
       }
     }
     return left
@@ -231,7 +278,7 @@ export function parseDimensionWithUnknown(expr, customUnits = {}) {
     let left = parsePower()
     while (pos < tokens.length) {
       const op = tokens[pos]
-      if (!op || op.type !== 'op' || (op.value !== '*' && op.value !== '/')) break
+      if (!op || op.type !== 'mul_op') break
       pos++
       const right = parsePower()
       if (op.value === '*') {
@@ -243,13 +290,47 @@ export function parseDimensionWithUnknown(expr, customUnits = {}) {
     return left
   }
 
-  const powers = parseTerm()
+  function parseExpr() {
+    let left = parseTerm()
+    while (pos < tokens.length) {
+      const op = tokens[pos]
+      if (!op || op.type !== 'add_op') break
+      pos++
+      const unknownBefore = unknown.length
+      const right = parseTerm()
+      const unknownAfter = unknown.length
+      if (unknownBefore === 0 && unknownAfter === 0 && !isSameDim(left, right)) {
+        throw new Error('Incompatible dimensional addition/subtraction: ' + formatPowers(left) + ' vs ' + formatPowers(right))
+      }
+    }
+    return left
+  }
+
+  const powers = parseExpr()
+  if (pos < tokens.length) {
+    throw new SyntaxError('Unexpected extra token "' + tokens[pos].value + '" in expression: "' + expr + '"')
+  }
+
   return { powers, unknown: [...new Set(unknown)] }
 }
 
 export function checkDimensions(lhsExpr, rhsExpr, customUnits = {}) {
-  const lhsRes = parseDimensionWithUnknown(lhsExpr, customUnits)
-  const rhsRes = parseDimensionWithUnknown(rhsExpr, customUnits)
+  let lhsRes, rhsRes
+  try {
+    lhsRes = parseDimensionWithUnknown(lhsExpr, customUnits)
+    rhsRes = parseDimensionWithUnknown(rhsExpr, customUnits)
+  } catch (err) {
+    return {
+      consistent: false,
+      error: err.message,
+      unknown: [],
+      lhsPowers: {},
+      rhsPowers: {},
+      difference: null,
+      message: '❌ 量纲检验失败: ' + err.message,
+    }
+  }
+
   const unknown = [...new Set([...lhsRes.unknown, ...rhsRes.unknown])]
 
   if (unknown.length > 0) {
@@ -280,11 +361,6 @@ export function checkDimensions(lhsExpr, rhsExpr, customUnits = {}) {
     }
   }
 
-  const formatPowers = (p) => {
-    const parts = Object.entries(p).map(([k, v]) => (v === 1 ? k : k + '^' + v))
-    return parts.length > 0 ? '[' + parts.join(' · ') + ']' : '[无量纲 / 1]'
-  }
-
   const msg = consistent
     ? '✅ 量纲检验一致 (Consistent): ' + lhsExpr + ' ' + formatPowers(lhsPowers) + ' = ' + rhsExpr + ' ' + formatPowers(rhsPowers)
     : '❌ 量纲检验不匹配 (Inconsistent): ' + lhsExpr + ' ' + formatPowers(lhsPowers) + ' ≠ ' + rhsExpr + ' ' + formatPowers(rhsPowers)
@@ -297,6 +373,7 @@ export function checkDimensions(lhsExpr, rhsExpr, customUnits = {}) {
     message: msg,
   }
 }
+
 
 export function numericEval(analytic, numerical, tolerance = 1e-4) {
   const a = typeof analytic === 'number' ? analytic : parseFloat(analytic)

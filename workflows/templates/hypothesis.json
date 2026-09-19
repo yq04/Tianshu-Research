@@ -1,0 +1,30 @@
+{
+  "paradigm": "hypothesis",
+  "name": "敏捷假说回环范式 (Agile Hypothesis Loop Paradigm)",
+  "description": "可证伪假说驱动、最小快速验伪、负结果第一类科研存证与跨版本演进。",
+  "typicalInputs": [
+    "formula",
+    "dataset",
+    "code"
+  ],
+  "standardOperations": [
+    "hypothesis.formulate",
+    "hypothesis.test",
+    "hypothesis.evaluate",
+    "hypothesis.revise"
+  ],
+  "requiredGates": [
+    "provenance-integrity"
+  ],
+  "deliverables": [
+    "hypothesis_session",
+    "revision_history",
+    "counter_examples",
+    "conclusive_report"
+  ],
+  "defaultBudgets": {
+    "wallSeconds": 600,
+    "maxRuns": 10,
+    "maxIterations": 3
+  }
+}

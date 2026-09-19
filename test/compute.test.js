@@ -2,6 +2,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   checkDimensions,
+  parseDimension,
   numericEval,
   probeEnvironment,
   runResearchCompute,
@@ -114,6 +115,39 @@ describe('Research Compute Gateway & Tools', () => {
       assert.ok(res.unknown.includes('foo'))
       assert.ok(res.unknown.includes('bar'))
       assert.ok(res.message.includes('未知量纲符号'))
+    })
+
+    it('returns consistent:false on incompatible dimensional addition', () => {
+      const res = checkDimensions('force + length', 'force')
+      assert.equal(res.consistent, false)
+      assert.ok(res.message.includes('量纲检验失败'))
+    })
+
+    it('returns consistent:false on unclosed parenthesis', () => {
+      const res = checkDimensions('force / (area', 'pressure')
+      assert.equal(res.consistent, false)
+      assert.ok(res.message.includes('量纲检验失败'))
+    })
+
+    it('returns consistent:true on compatible dimensional addition', () => {
+      const res = checkDimensions('force + force', 'force')
+      assert.equal(res.consistent, true)
+    })
+
+    it('throws error on incompatible dimensional addition in parseDimension', () => {
+      assert.throws(() => parseDimension('force + length'), /Incompatible dimensional addition/)
+    })
+
+    it('throws syntax error on unclosed parenthesis in parseDimension', () => {
+      assert.throws(() => parseDimension('force / (area'), /Unclosed parenthesis/)
+    })
+
+    it('throws syntax error on unconsumed tokens in parseDimension', () => {
+      assert.throws(() => parseDimension('force extra_token'), /Unexpected extra token/)
+    })
+
+    it('throws syntax error on illegal characters in parseDimension', () => {
+      assert.throws(() => parseDimension('force @ length'), /Illegal character/)
     })
   })
 

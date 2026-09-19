@@ -87,3 +87,45 @@ RIS 是各大学术数据库与文献管理软件通用的标准交换格式：
   - **Tianshu-Research**：负责学术检索（arXiv / OpenAlex）、精读证据切块提取、结构化事实核验与科学双门禁审查。
   - **Zotero MCP**：负责个人永久文献库同步、PDF 全文标注管理与统一引用键生成。
 
+
+---
+
+## 5. 内置 Zotero Web API v3 连接器（Phase 9A）
+
+自 0.2.0 起，插件内置第一方 Zotero Web API v3 客户端（`connectors/zotero.js`），无需社区 MCP 也可完成「检索 → 去重 → 安全写入个人库」闭环。所有写入操作遵守以下硬性纪律：
+
+### 5.1 冲突安全的条件写入（412）
+
+- 更新条目必须携带 `If-Unmodified-Since-Version`（期望版本号）；
+- 服务器返回 **412 Precondition Failed** 时，客户端抛出 `ZoteroConflictError` 并携带服务器最新版本号，**绝不静默覆盖并发修改**——必须重新读取条目后人工决定重试。
+
+### 5.2 诚实去重（不重复写入）
+
+- `createItem` 在写入前按 DOI / arXiv id 扫描现有条目；
+- 发现同标识条目直接返回 `{ status: 'duplicate', item }`，**不发起任何网络写入**。
+
+### 5.3 附件作用域（fail-closed）
+
+- 附件操作（`createLinkAttachment`）必须在显式声明的 `allowedCollections` 范围内执行；
+- 目标 collection 不在作用域内时，在发起任何网络请求**之前**拒绝（`ZoteroScopeError`）。
+
+### 5.4 限速与凭据
+
+- 429 响应按 Zotero `Backoff` / `Retry-After` 头诚实退避重试（有界次数，超限如实报错）；
+- API Key 仅经 `Authorization` 头传输，所有诊断信息经脱敏（`describe()` 永不输出完整 key）。
+
+### 5.5 配置
+
+```js
+import { createZoteroClient } from './connectors/zotero.js';
+
+const client = createZoteroClient({
+  userId: process.env.ZOTERO_USER_ID,
+  apiKey: process.env.ZOTERO_API_KEY,   // 或 libraryType: 'groups' + groupId
+});
+
+const dup = await client.createItem({ itemType: 'journalArticle', title: '…', DOI: '10.1000/x' });
+if (dup.status === 'duplicate') return; // 已存在，未写入
+```
+
+**测试纪律**：本连接器的全部单测基于离线 fixtures（fake transport），不写任何真实 Zotero 库；实时 smoke 单独执行，只读不写。
